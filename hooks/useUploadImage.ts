@@ -141,7 +141,7 @@ export function useUploadImage(): UseUploadImageReturn {
         ): Promise<string | null> => {
             const {
                 bucket = 'fotosPerfil',
-                folder = 'perfil',
+                folder,
                 uniqueFileName = true,
                 upsert = false,
             } = options;

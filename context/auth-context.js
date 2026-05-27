@@ -13,6 +13,10 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
  * @property {string} id          - UUID único del usuario en Supabase Auth.
  * @property {string} email       - Correo electrónico del usuario.
  * @property {string|null} nombre - Nombre del usuario (si fue registrado).
+ * @property {string|null} apellido - Apellido del usuario (si fue registrado).
+ * @property {string|null} telefono - Teléfono del usuario.
+ * @property {string|null} cedula - Cédula del usuario.
+ * @property {string|null} fotoUrl - URL de la foto del usuario.
  * @property {string|null} role    - Rol del usuario en el sistema (ej: 'admin', 'conductor').
  * @property {string} createdAt   - Fecha de creación de la cuenta ISO 8601.
  */
@@ -282,7 +286,7 @@ export function AuthProvider({ children }) {
                     .insert({
                         id: authData.user.id,   // FK a auth.users
                         email: normalizedEmail,
-                        nombre: nombre.trim(),
+                        name: nombre.trim(),
                         role: 'Pasajero',          // Rol por defecto
                         ci: ci,
                         telf: telf,
@@ -384,7 +388,7 @@ export function AuthProvider({ children }) {
             'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres.',
             'Unable to validate email address: invalid format': 'El formato del correo no es válido.',
             'signup is disabled': 'El registro de nuevos usuarios está temporalmente desactivado.',
-            'Email rate limit exceeded': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+            //'Email rate limit exceeded': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
             'invalid_credentials': 'Correo o contraseña incorrectos.',
         };
 
