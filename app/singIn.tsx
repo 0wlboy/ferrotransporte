@@ -1,20 +1,21 @@
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ProfilePicker, type PickedImage } from '@/components/ui/profile-picker';
+import { useAuth } from '@/context/auth-context';
+import { useUploadImage } from '@/hooks/useUploadImage';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-    StyleSheet,
-    View,
-    Text,
-    TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ProfilePicker, type PickedImage } from '@/components/ui/profile-picker';
-import { useAuth } from '@/context/auth-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDACIONES
@@ -98,6 +99,9 @@ export default function SingIn() {
 
     // ── Contexto de autenticación ──
     const { signUp, isLoading } = useAuth();
+
+    // ── Subida de imagen de perfil a Supabase Storage ──
+    const { uploadImage, uploading, error: uploadError } = useUploadImage();
 
     // ───────────────────────────────────────────────────────────────────────
     // MANEJADOR: Selección de imagen de perfil
@@ -213,25 +217,37 @@ export default function SingIn() {
     /**
      * Orquesta el proceso completo de registro:
      * 1. Valida el formulario localmente.
-     * 2. Delega al contexto de auth (verifica unicidad del email y crea cuenta).
-     * 3. La imagen procesada está disponible en `profileImage` para subirse
-     *    a un storage (ej: Supabase Storage) cuando se configure el destino.
+     * 2. Sube la foto de perfil al bucket `avatars` de Supabase Storage.
+     * 3. Delega al contexto de auth con la URL pública de la imagen.
      */
     const handleRegister = async () => {
         if (!validateForm()) return;
 
+        // ── 1. Subir imagen de perfil ──
+        // profileImage siempre existe aquí porque validateForm() lo garantiza.
+        const avatarUrl = await uploadImage(profileImage!, {
+            bucket: 'fotosPerfil',
+            folder: 'perfil',
+            uniqueFileName: true,
+            upsert: false,
+        });
+
+        if (!avatarUrl) {
+            // uploadError ya está seteado en el hook; no bloqueamos el registro
+            // si la subida falla — se puede reintentar después.
+            console.warn('No se pudo subir la imagen de perfil:', uploadError);
+        }
+
+        // ── 2. Registrar usuario en Supabase Auth ──
         const { emailError: serverEmailError, generalError } = await signUp(
             email,
             password,
-            `${nombre.trim()} ${apellido.trim()}`
+            `${nombre.trim()} ${apellido.trim()}`,
+            avatarUrl ?? undefined,
         );
 
         if (serverEmailError) setEmailError(serverEmailError);
         if (generalError) setEmailError(generalError);
-
-        // NOTA: profileImage contiene la imagen procesada y lista.
-        // Cuando se disponga de un destino (Supabase Storage, etc.), se sube aquí:
-        // await uploadProfileImage(profileImage, userId);
     };
 
     // ───────────────────────────────────────────────────────────────────────
@@ -416,7 +432,7 @@ export default function SingIn() {
                         <Button
                             title="Registrar Usuario"
                             onPress={handleRegister}
-                            isLoading={isLoading}
+                            isLoading={isLoading || uploading}
                             containerStyle={styles.submitButton}
                         />
 

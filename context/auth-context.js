@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
 import { supabase } from '@/utils/supabase';
+import { router } from 'expo-router';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS Y DEFINICIONES
@@ -13,7 +13,7 @@ import { supabase } from '@/utils/supabase';
  * @property {string} id          - UUID único del usuario en Supabase Auth.
  * @property {string} email       - Correo electrónico del usuario.
  * @property {string|null} nombre - Nombre del usuario (si fue registrado).
- * @property {string|null} rol    - Rol del usuario en el sistema (ej: 'admin', 'conductor').
+ * @property {string|null} role    - Rol del usuario en el sistema (ej: 'admin', 'conductor').
  * @property {string} createdAt   - Fecha de creación de la cuenta ISO 8601.
  */
 
@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
 
         // Limpiar el listener al desmontar el provider
         return () => {
-            subscription.unsubscribe();
+            if (subscription) subscription.unsubscribe();
         };
     }, []);
 
@@ -143,8 +143,10 @@ export function AuthProvider({ children }) {
             const userProfile = {
                 id: authUser.id,
                 email: authUser.email,
-                nombre: profile?.nombre ?? null,
-                rol: profile?.rol ?? null,
+                nombre: profile?.name ?? null,
+                fotoUrl: profile?.foto_url ?? null,
+                department: profile?.department ?? null,
+                role: profile?.role ?? null,
                 createdAt: authUser.created_at,
             };
 
@@ -178,6 +180,16 @@ export function AuthProvider({ children }) {
                 email: email.trim().toLowerCase(),
                 password,
             });
+            if (data?.user) {
+                const { error: rpcError } = await supabase.rpc('login_update', {
+                    user_id: data.user.id
+                })
+                if (rpcError) {
+                    console.error('[AuthContext] Error al actualizar login:', rpcError.message);
+                    // No bloqueamos el flujo si falla la inserción del perfil extendido,
+                    // el usuario ya fue creado en Auth y se puede reintentar el perfil.
+                }
+            }
 
             if (error) {
                 // Mapear mensajes de error de Supabase a español
@@ -215,7 +227,7 @@ export function AuthProvider({ children }) {
      * @param {string} nombre      - Nombre completo del nuevo usuario.
      * @returns {Promise<{emailError: string|null, passwordError: string|null, generalError: string|null}>}
      */
-    const signUp = useCallback(async (email, password, nombre) => {
+    const signUp = useCallback(async (email, password, nombre, fotoUrl, ci, telf, department) => {
         setIsLoading(true);
 
         const normalizedEmail = email.trim().toLowerCase();
@@ -271,7 +283,15 @@ export function AuthProvider({ children }) {
                         id: authData.user.id,   // FK a auth.users
                         email: normalizedEmail,
                         nombre: nombre.trim(),
-                        rol: 'usuario',          // Rol por defecto
+                        role: 'Pasajero',          // Rol por defecto
+                        ci: ci,
+                        telf: telf,
+                        foto_url: fotoUrl,
+                        department: department,
+                        active: true, // verdadero por defecto
+                        updated_at: new Date().toISOString(),
+                        total_login_count: 1,
+                        last_login: new Date().toISOString(),
                         created_at: new Date().toISOString(),
                     });
 
@@ -315,6 +335,18 @@ export function AuthProvider({ children }) {
     const signOut = useCallback(async () => {
         setIsLoading(true);
         try {
+            const { error: insertError } = await supabase
+                .from('usuarios')
+                .update({
+                    active: false
+                }).eq('id', user?.id);
+
+            if (insertError) {
+                console.error('[AuthContext] Error al crear perfil:', insertError.message);
+                // No bloqueamos el flujo si falla la inserción del perfil extendido,
+                // el usuario ya fue creado en Auth y se puede reintentar el perfil.
+            }
+
             const { error } = await supabase.auth.signOut();
 
             if (error) {
