@@ -70,15 +70,6 @@ function generateUniqueFileName(originalName: string): string {
     return `${timestamp}_${random}.${extension}`;
 }
 
-/**
- * Convierte la URI local de una imagen en un `Blob` para subirla a Supabase.
- * Funciona tanto en React Native (fetch nativo) como en web.
- */
-async function uriToBlob(uri: string): Promise<Blob> {
-    const response = await fetch(uri);
-    return await response.blob();
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HOOK
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,8 +133,8 @@ export function useUploadImage(): UseUploadImageReturn {
             const {
                 bucket = 'fotosPerfil',
                 folder,
-                uniqueFileName = true,
-                upsert = false,
+                uniqueFileName = false,
+                upsert = true,
             } = options;
 
             setUploading(true);
@@ -160,13 +151,19 @@ export function useUploadImage(): UseUploadImageReturn {
                 // Construir la ruta completa dentro del bucket
                 const storagePath = folder ? `${folder}/${fileName}` : fileName;
 
-                // ── 2. Convertir URI local a Blob ──
-                const blob = await uriToBlob(image.uri);
+                // ── 2. Preparar el archivo (URI para React Native) ──
+                const formData = new FormData();
+                const file = {
+                    uri: image.uri,
+                    name: fileName,
+                    type: image.mimeType ?? 'image/jpeg',
+                } as any;
+                formData.append('file', file);
 
                 // ── 3. Subir al bucket de Supabase Storage ──
                 const { error: uploadError } = await supabase.storage
                     .from(bucket)
-                    .upload(storagePath, blob, {
+                    .upload(storagePath, formData, {
                         contentType: image.mimeType ?? 'image/jpeg',
                         upsert,
                     });
@@ -191,6 +188,7 @@ export function useUploadImage(): UseUploadImageReturn {
                     err instanceof Error
                         ? err.message
                         : 'Error desconocido al subir la imagen.';
+                console.error('[useUploadImage] Error al subir imagen:', message);
                 setError(message);
                 return null;
             } finally {

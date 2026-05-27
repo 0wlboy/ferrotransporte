@@ -135,7 +135,7 @@ export function AuthProvider({ children }) {
             const { data: profile, error } = await supabase
                 .from('usuarios')
                 .select('*')
-                .eq('id', authUser.id)
+                .eq('auth_id', authUser.id)
                 .single();
 
             if (error && error.code !== 'PGRST116') {
@@ -147,9 +147,9 @@ export function AuthProvider({ children }) {
             const userProfile = {
                 id: authUser.id,
                 email: authUser.email,
-                nombre: profile?.name ?? null,
+                nombre: profile ? `${profile.primer_nombre ?? ''} ${profile.apellido ?? ''}`.trim() : null,
                 fotoUrl: profile?.foto_url ?? null,
-                department: profile?.department ?? null,
+                gerencia: profile?.gerencia ?? null,
                 role: profile?.role ?? null,
                 createdAt: authUser.created_at,
             };
@@ -186,7 +186,7 @@ export function AuthProvider({ children }) {
             });
             if (data?.user) {
                 const { error: rpcError } = await supabase.rpc('login_update', {
-                    user_id: data.user.id
+                    auth_id: data.user.id
                 })
                 if (rpcError) {
                     console.error('[AuthContext] Error al actualizar login:', rpcError.message);
@@ -202,7 +202,7 @@ export function AuthProvider({ children }) {
 
             // El onAuthStateChange se encargará de cargar el perfil automáticamente.
             // Navegar a la pantalla principal de la app
-            router.replace('/(auth)/(tabs)');
+            router.replace('/(auth)/home');
             return { error: null };
         } catch (err) {
             console.error('[AuthContext] Error inesperado en signIn:', err);
@@ -231,7 +231,7 @@ export function AuthProvider({ children }) {
      * @param {string} nombre      - Nombre completo del nuevo usuario.
      * @returns {Promise<{emailError: string|null, passwordError: string|null, generalError: string|null}>}
      */
-    const signUp = useCallback(async (email, password, nombre, fotoUrl, ci, telf, department) => {
+    const signUp = useCallback(async ({ email, password, nombre, apellido, fotoPerfil, ci, telefono, gerencia }) => {
         setIsLoading(true);
 
         const normalizedEmail = email.trim().toLowerCase();
@@ -267,7 +267,7 @@ export function AuthProvider({ children }) {
                 email: normalizedEmail,
                 password,
                 options: {
-                    data: { nombre }, // Datos adicionales en el JWT (user_metadata)
+                    data: { nombre: `${nombre.trim()} ${apellido.trim()}` }, // Nombre completo en metadatos
                 },
             });
 
@@ -284,14 +284,14 @@ export function AuthProvider({ children }) {
                 const { error: insertError } = await supabase
                     .from('usuarios')
                     .insert({
-                        id: authData.user.id,   // FK a auth.users
+                        auth_id: authData.user.id,   // FK a auth.users
                         email: normalizedEmail,
-                        name: nombre.trim(),
-                        role: 'Pasajero',          // Rol por defecto
+                        primer_nombre: nombre.trim(),
+                        apellido: apellido.trim(),
                         ci: ci,
-                        telf: telf,
-                        foto_url: fotoUrl,
-                        department: department,
+                        telf: telefono,
+                        foto_url: fotoPerfil ?? null,
+                        gerencia: gerencia,
                         active: true, // verdadero por defecto
                         updated_at: new Date().toISOString(),
                         total_login_count: 1,
@@ -307,7 +307,7 @@ export function AuthProvider({ children }) {
             }
 
             // El onAuthStateChange cargará el perfil y navegará automáticamente
-            router.replace('/(auth)/(tabs)');
+            router.replace('/(auth)/home');
             return { emailError: null, passwordError: null, generalError: null };
         } catch (err) {
             console.error('[AuthContext] Error inesperado en signUp:', err);
@@ -343,12 +343,11 @@ export function AuthProvider({ children }) {
                 .from('usuarios')
                 .update({
                     active: false
-                }).eq('id', user?.id);
+                }).eq('auth_id', user?.id);
 
             if (insertError) {
-                console.error('[AuthContext] Error al crear perfil:', insertError.message);
-                // No bloqueamos el flujo si falla la inserción del perfil extendido,
-                // el usuario ya fue creado en Auth y se puede reintentar el perfil.
+                console.error('[AuthContext] Error al actualizar estado activo:', insertError.message);
+                // No bloqueamos el flujo si falla
             }
 
             const { error } = await supabase.auth.signOut();

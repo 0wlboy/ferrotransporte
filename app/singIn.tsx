@@ -24,8 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 /** Regex para validar correo electrónico. */
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Regex para contraseña: mínimo 6 caracteres con al menos 1 letra y 1 número. */
-const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+/** Regex para contraseña: mínimo 6 caracteres con al menos 1 letra mayuscula, 1 letra minuscula, 1 simbolo y 1 número. */
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':",.<>\/?\\|]).{6,}$/;
 
 /** Regex para nombre/apellido: letras (con acentos y ñ), espacios y guiones, 2-60 chars. */
 const NOMBRE_REGEX = /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s-]{2,60}$/;
@@ -41,7 +41,7 @@ const CI_REGEX = /^V-[0-9]{6,8}$/;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Lista de departamentos disponibles para el selector. */
-const DEPARTAMENTOS = [
+const GERENCIAS = [
     'Gerencias',
     'Operaciones',
     'Mantenimiento',
@@ -81,7 +81,7 @@ export default function SingIn() {
     const [apellido, setApellido] = useState('');
     const [telefono, setTelefono] = useState('+58 ');
     const [ci, setCi] = useState('V-');
-    const [departamento, setDepartamento] = useState('Gerencias');
+    const [gerencia, setGerencia] = useState('Gerencias');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -94,7 +94,7 @@ export default function SingIn() {
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
 
-    // ── Dropdown de departamento ──
+    // ── Dropdown de gerencia ──
     const [showDropdown, setShowDropdown] = useState(false);
 
     // ── Contexto de autenticación ──
@@ -201,7 +201,7 @@ export default function SingIn() {
             setPasswordError('La contraseña es requerida.');
             isValid = false;
         } else if (!PASSWORD_REGEX.test(password)) {
-            setPasswordError('Mínimo 6 caracteres con 1 letra y 1 número.');
+            setPasswordError('Mínimo 6 caracteres con 1 letra minuscula, 1 letra mayuscula, 1 simbolo (¿?¡!/&%$#) y 1 número.');
             isValid = false;
         } else {
             setPasswordError('');
@@ -227,24 +227,29 @@ export default function SingIn() {
         // profileImage siempre existe aquí porque validateForm() lo garantiza.
         const avatarUrl = await uploadImage(profileImage!, {
             bucket: 'fotosPerfil',
-            folder: 'perfil',
+            folder: 'pasajeros',
             uniqueFileName: true,
             upsert: false,
         });
 
         if (!avatarUrl) {
-            // uploadError ya está seteado en el hook; no bloqueamos el registro
-            // si la subida falla — se puede reintentar después.
-            console.warn('No se pudo subir la imagen de perfil:', uploadError);
+            // El error real ya es logueado dentro del hook con console.error.
+            // No bloqueamos el registro si la subida falla — la foto es opcional
+            // y se puede actualizar más adelante desde el perfil.
+            console.warn('No se pudo subir la imagen de perfil. Continuando sin foto...');
         }
 
         // ── 2. Registrar usuario en Supabase Auth ──
-        const { emailError: serverEmailError, generalError } = await signUp(
+        const { emailError: serverEmailError, generalError } = await signUp({
             email,
             password,
-            `${nombre.trim()} ${apellido.trim()}`,
-            avatarUrl ?? undefined,
-        );
+            nombre: nombre.trim(),
+            apellido: apellido.trim(),
+            fotoPerfil: avatarUrl ?? undefined,
+            ci: ci.trim(),
+            telefono: telefono.trim(),
+            gerencia: gerencia,
+        });
 
         if (serverEmailError) setEmailError(serverEmailError);
         if (generalError) setEmailError(generalError);
@@ -358,40 +363,40 @@ export default function SingIn() {
                             </View>
                         </View>
 
-                        {/* ── Departamento (dropdown) ── */}
+                        {/* ── gerencia (dropdown) ── */}
                         <View style={styles.dropdownWrapper}>
-                            <Text style={styles.dropdownLabel}>Departamento</Text>
+                            <Text style={styles.dropdownLabel}>Gerencia</Text>
                             <TouchableOpacity
                                 style={styles.dropdownButton}
                                 onPress={() => setShowDropdown(!showDropdown)}
                                 activeOpacity={0.8}
                             >
-                                <Text style={styles.dropdownSelected}>{departamento}</Text>
+                                <Text style={styles.dropdownSelected}>{gerencia}</Text>
                                 <Text style={styles.dropdownChevron}>▾</Text>
                             </TouchableOpacity>
 
                             {/* Lista desplegable */}
                             {showDropdown && (
                                 <View style={styles.dropdownList}>
-                                    {DEPARTAMENTOS.map((dep) => (
+                                    {GERENCIAS.map((ger) => (
                                         <TouchableOpacity
-                                            key={dep}
+                                            key={ger}
                                             style={[
                                                 styles.dropdownItem,
-                                                dep === departamento && styles.dropdownItemActive,
+                                                ger === gerencia && styles.dropdownItemActive,
                                             ]}
                                             onPress={() => {
-                                                setDepartamento(dep);
+                                                setGerencia(ger);
                                                 setShowDropdown(false);
                                             }}
                                         >
                                             <Text
                                                 style={[
                                                     styles.dropdownItemText,
-                                                    dep === departamento && styles.dropdownItemTextActive,
+                                                    ger === gerencia && styles.dropdownItemTextActive,
                                                 ]}
                                             >
-                                                {dep}
+                                                {ger}
                                             </Text>
                                         </TouchableOpacity>
                                     ))}
@@ -416,7 +421,7 @@ export default function SingIn() {
 
                         {/* ── Contraseña ── */}
                         <Input
-                            label="Correo"
+                            label="Contraseña"
                             placeholder="Password"
                             value={password}
                             onChangeText={(t) => {

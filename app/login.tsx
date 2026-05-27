@@ -1,21 +1,23 @@
-import React, { useState } from 'react';
+// nuevo comentario 
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/context/auth-context';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import {
-    StyleSheet,
-    View,
-    Text,
-    TouchableOpacity,
+    Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Alert,
-    Image
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/context/auth-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDACIONES
