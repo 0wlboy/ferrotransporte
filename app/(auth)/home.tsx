@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import {PetitionCardSmall} from '@/components/ui/petition-card'
 import { router } from 'expo-router';
 import React from 'react';
 import {
@@ -13,22 +14,6 @@ import {
     View,
 } from 'react-native';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TIPOS
-// ─────────────────────────────────────────────────────────────────────────────
-
-type TripStatus = 'Completado' | 'Cancelado' | 'En Camino' | 'Pendiente';
-
-interface TripRecord {
-    id: string;
-    conductorNombre: string;
-    conductorFoto?: string;
-    origen: string;
-    destino: string;
-    fecha: string;
-    hora: string;
-    estado: TripStatus;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATOS DE RELLENO (se reemplazará con datos reales de la tabla peticiones)
@@ -68,18 +53,6 @@ const PLACEHOLDER_TRIPS: TripRecord[] = [
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Devuelve el color de badge según el estado del viaje.
- */
-function getStatusColor(estado: TripStatus): string {
-    switch (estado) {
-        case 'Completado': return '#2E7D32';
-        case 'Cancelado': return '#C62828';
-        case 'En Camino': return '#1565C0';
-        case 'Pendiente': return '#E65100';
-        default: return '#757575';
-    }
-}
 
 /**
  * Devuelve el saludo según la hora del día.
@@ -107,70 +80,6 @@ function getActionButton(role: string | null): { label: string; icon: string; ro
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTE: Tarjeta de viaje
-// ─────────────────────────────────────────────────────────────────────────────
-
-function TripCard({ trip }: { trip: TripRecord }) {
-    const statusColor = getStatusColor(trip.estado);
-
-    return (
-        <View style={styles.tripCard}>
-            {/* Fila superior: foto + nombre + origen/destino */}
-            <View style={styles.tripCardTop}>
-                {/* Avatar del conductor */}
-                <View style={styles.avatarContainer}>
-                    {trip.conductorFoto ? (
-                        <Image source={{ uri: trip.conductorFoto }} style={styles.avatar} />
-                    ) : (
-                        <View style={styles.avatarPlaceholder}>
-                            <MaterialCommunityIcons name="account" size={28} color="#888" />
-                        </View>
-                    )}
-                </View>
-
-                {/* Nombre del conductor */}
-                <View style={styles.tripConductorInfo}>
-                    <Text style={styles.tripConductorLabel}>Conductor</Text>
-                    <Text style={styles.tripConductorName}>{trip.conductorNombre}</Text>
-                </View>
-
-                {/* Origen → Destino */}
-                <View style={styles.tripRoute}>
-                    <View style={styles.tripRouteRow}>
-                        <Text style={styles.tripRouteLabel}>Origen  </Text>
-                        <Text style={styles.tripRouteValue}>{trip.origen}</Text>
-                    </View>
-                    <View style={styles.tripArrowRow}>
-                        <MaterialCommunityIcons
-                            name="arrow-down"
-                            size={14}
-                            color={Colors.light.tint}
-                            style={styles.tripArrowIcon}
-                        />
-                    </View>
-                    <View style={styles.tripRouteRow}>
-                        <Text style={styles.tripRouteLabel}>Destino </Text>
-                        <Text style={styles.tripRouteValue}>{trip.destino}</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* Separador */}
-            <View style={styles.tripDivider} />
-
-            {/* Fila inferior: fecha + estado */}
-            <View style={styles.tripCardBottom}>
-                <Text style={styles.tripDateText}>
-                    Fecha: {trip.fecha}{'  '}{trip.hora}
-                </Text>
-                <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-                    <Text style={styles.statusBadgeText}>{trip.estado}</Text>
-                </View>
-            </View>
-        </View>
-    );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PANTALLA PRINCIPAL
@@ -252,7 +161,7 @@ export default function Home() {
                 <Text style={styles.sectionTitle}>HISTORIAL DE VIAJES</Text>
 
                 {recentTrips.map((trip) => (
-                    <TripCard key={trip.id} trip={trip} />
+                    <PetitionCardSmall key={trip.id} data={trip} />
                 ))}
 
                 {/* ── VER MÁS ── */}
