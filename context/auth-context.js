@@ -202,13 +202,18 @@ export function AuthProvider({ children }) {
         password,
       });
       if (data?.user) {
-        const { error: rpcError } = await supabase.rpc("login_update", {
-          auth_id: data.user.id,
-        });
-        if (rpcError) {
+        const { error: updateError } = await supabase
+          .from("usuarios")
+          .update({
+            activo: true,
+            last_login: new Date(),
+          })
+          .eq("auth_id", data.user.id);
+
+        if (updateError) {
           console.error(
             "[AuthContext] Error al actualizar login:",
-            rpcError.message,
+            updateError.message,
           );
           // No bloqueamos el flujo si falla la inserción del perfil extendido,
           // el usuario ya fue creado en Auth y se puede reintentar el perfil.
