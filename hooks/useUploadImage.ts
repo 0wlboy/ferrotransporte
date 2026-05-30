@@ -1,6 +1,6 @@
-import type { PickedImage } from '@/components/ui/profile-picker';
-import { supabase } from '@/utils/supabase';
-import { useCallback, useState } from 'react';
+import type { PickedImage } from "@/components/ui/profile-picker";
+import { supabase } from "@/utils/supabase";
+import { useCallback, useState } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS
@@ -10,49 +10,52 @@ import { useCallback, useState } from 'react';
  * Opciones para personalizar el comportamiento de la subida.
  */
 export interface UploadOptions {
-    /**
-     * Nombre del bucket de Supabase Storage donde se subirá la imagen.
-     * El bucket debe existir y tener las políticas de acceso configuradas.
-     * @default 'images'
-     */
-    bucket?: string;
-    /**
-     * Carpeta dentro del bucket donde se guardará el archivo.
-     * @example 'avatars' → sube a `<bucket>/avatars/<filename>`
-     */
-    folder?: string;
-    /**
-     * Si es `true`, genera un nombre de archivo único usando un UUID
-     * para evitar colisiones. Si es `false`, usa el nombre original.
-     * @default true
-     */
-    uniqueFileName?: boolean;
-    /**
-     * Si es `true`, reemplaza el archivo si ya existe en el mismo path.
-     * @default false
-     */
-    upsert?: boolean;
+  /**
+   * Nombre del bucket de Supabase Storage donde se subirá la imagen.
+   * El bucket debe existir y tener las políticas de acceso configuradas.
+   * @default 'images'
+   */
+  bucket?: string;
+  /**
+   * Carpeta dentro del bucket donde se guardará el archivo.
+   * @example 'avatars' → sube a `<bucket>/avatars/<filename>`
+   */
+  userAuthId?: string;
+  /**
+   * Si es `true`, genera un nombre de archivo único usando un UUID
+   * para evitar colisiones. Si es `false`, usa el nombre original.
+   * @default true
+   */
+  uniqueFileName?: boolean;
+  /**
+   * Si es `true`, reemplaza el archivo si ya existe en el mismo path.
+   * @default false
+   */
+  upsert?: boolean;
 }
 
 /**
  * Valor de retorno del hook `useUploadImage`.
  */
 export interface UseUploadImageReturn {
-    /**
-     * Sube una imagen al bucket de Supabase Storage.
-     * @param image - Imagen procesada por `ProfilePicker` u otro selector.
-     * @param options - Opciones opcionales de subida (bucket, folder, etc.).
-     * @returns La URL pública de la imagen subida, o `null` si hubo un error.
-     */
-    uploadImage: (image: PickedImage, options?: UploadOptions) => Promise<string | null>;
-    /** `true` mientras la imagen se está subiendo. */
-    uploading: boolean;
-    /** Mensaje de error si la subida falla, o `null` si todo está bien. */
-    error: string | null;
-    /** URL pública de la última imagen subida con éxito. */
-    publicUrl: string | null;
-    /** Resetea el estado del hook (error, publicUrl) a sus valores iniciales. */
-    reset: () => void;
+  /**
+   * Sube una imagen al bucket de Supabase Storage.
+   * @param image - Imagen procesada por `ProfilePicker` u otro selector.
+   * @param options - Opciones opcionales de subida (bucket, folder, etc.).
+   * @returns La URL pública de la imagen subida, o `null` si hubo un error.
+   */
+  uploadImage: (
+    image: PickedImage,
+    options?: UploadOptions,
+  ) => Promise<string | null>;
+  /** `true` mientras la imagen se está subiendo. */
+  uploading: boolean;
+  /** Mensaje de error si la subida falla, o `null` si todo está bien. */
+  error: string | null;
+  /** URL pública de la última imagen subida con éxito. */
+  publicUrl: string | null;
+  /** Resetea el estado del hook (error, publicUrl) a sus valores iniciales. */
+  reset: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,10 +67,10 @@ export interface UseUploadImageReturn {
  * @param originalName - Nombre original del archivo (usado para preservar la extensión).
  */
 function generateUniqueFileName(originalName: string): string {
-    const extension = originalName.split('.').pop() ?? 'jpg';
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
-    return `${timestamp}_${random}.${extension}`;
+  const extension = originalName.split(".").pop() ?? "jpg";
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}_${random}.${extension}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,96 +110,97 @@ function generateUniqueFileName(originalName: string): string {
  * - El bucket debe ser público o tener políticas de SELECT configuradas.
  */
 export function useUploadImage(): UseUploadImageReturn {
-    const [uploading, setUploading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
 
-    // ───────────────────────────────────────────────────────────────────────
-    // RESET
-    // ───────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────
+  // RESET
+  // ───────────────────────────────────────────────────────────────────────
 
-    /** Limpia el error y la URL pública, dejando el hook listo para un nuevo intento. */
-    const reset = useCallback(() => {
-        setError(null);
-        setPublicUrl(null);
-    }, []);
+  /** Limpia el error y la URL pública, dejando el hook listo para un nuevo intento. */
+  const reset = useCallback(() => {
+    setError(null);
+    setPublicUrl(null);
+  }, []);
 
-    // ───────────────────────────────────────────────────────────────────────
-    // UPLOAD
-    // ───────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────
+  // UPLOAD
+  // ───────────────────────────────────────────────────────────────────────
 
-    const uploadImage = useCallback(
-        async (
-            image: PickedImage,
-            options: UploadOptions = {},
-        ): Promise<string | null> => {
-            const {
-                bucket = 'fotosPerfil',
-                folder,
-                uniqueFileName = false,
-                upsert = true,
-            } = options;
+  const uploadImage = useCallback(
+    async (
+      image: PickedImage,
+      options: UploadOptions = {},
+    ): Promise<string | null> => {
+      const {
+        bucket = "fotosPerfil",
+        uniqueFileName = false,
+        userAuthId,
+        upsert = true,
+      } = options;
 
-            setUploading(true);
-            setError(null);
-            setPublicUrl(null);
+      setUploading(true);
+      setError(null);
+      setPublicUrl(null);
 
-            try {
-                // ── 1. Determinar el nombre final del archivo ──
-                const rawName = image.fileName || `image_${Date.now()}.jpg`;
-                const fileName = uniqueFileName
-                    ? generateUniqueFileName(rawName)
-                    : rawName;
+      try {
+        // ── 1. Determinar el nombre final del archivo ──
+        const rawName = image.fileName || `image_${Date.now()}.jpg`;
+        const fileName = uniqueFileName
+          ? generateUniqueFileName(rawName)
+          : rawName;
+        const folderPath = userAuthId;
 
-                // Construir la ruta completa dentro del bucket
-                const storagePath = folder ? `${folder}/${fileName}` : fileName;
+        // Construir la ruta completa dentro del bucket
+        const storagePath = folderPath ? `${folderPath}/${fileName}` : fileName;
 
-                // ── 2. Preparar el archivo (URI para React Native) ──
-                const formData = new FormData();
-                const file = {
-                    uri: image.uri,
-                    name: fileName,
-                    type: image.mimeType ?? 'image/jpeg',
-                } as any;
-                formData.append('file', file);
+        // ── 2. Preparar el archivo (URI para React Native) ──
+        const formData = new FormData();
+        const file = {
+          uri: image.uri,
+          name: fileName,
+          type: image.mimeType ?? "image/jpeg",
+        } as any;
+        formData.append("file", file);
 
-                // ── 3. Subir al bucket de Supabase Storage ──
-                const { error: uploadError } = await supabase.storage
-                    .from(bucket)
-                    .upload(storagePath, formData, {
-                        contentType: image.mimeType ?? 'image/jpeg',
-                        upsert,
-                    });
+        // ── 3. Subir al bucket de Supabase Storage ──
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(storagePath, formData, {
+            contentType: image.mimeType ?? "image/jpeg",
+            upsert,
+          });
 
-                if (uploadError) {
-                    throw new Error(uploadError.message);
-                }
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
 
-                // ── 4. Obtener la URL pública del archivo subido ──
-                const { data } = supabase.storage
-                    .from(bucket)
-                    .getPublicUrl(storagePath);
+        // ── 4. Obtener la URL pública del archivo subido ──
+        const { data } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(storagePath);
 
-                if (!data?.publicUrl) {
-                    throw new Error('No se pudo obtener la URL pública de la imagen.');
-                }
+        if (!data?.publicUrl) {
+          throw new Error("No se pudo obtener la URL pública de la imagen.");
+        }
 
-                setPublicUrl(data.publicUrl);
-                return data.publicUrl;
-            } catch (err) {
-                const message =
-                    err instanceof Error
-                        ? err.message
-                        : 'Error desconocido al subir la imagen.';
-                console.error('[useUploadImage] Error al subir imagen:', message);
-                setError(message);
-                return null;
-            } finally {
-                setUploading(false);
-            }
-        },
-        [],
-    );
+        setPublicUrl(data.publicUrl);
+        return data.publicUrl;
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Error desconocido al subir la imagen.";
+        console.error("[useUploadImage] Error al subir imagen:", message);
+        setError(message);
+        return null;
+      } finally {
+        setUploading(false);
+      }
+    },
+    [],
+  );
 
-    return { uploadImage, uploading, error, publicUrl, reset };
+  return { uploadImage, uploading, error, publicUrl, reset };
 }

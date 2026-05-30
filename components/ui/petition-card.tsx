@@ -93,7 +93,7 @@ export function PetitionCardSmall({ data }: { data: TripRecord }) {
 }
 
 export function PetitionCardBig() {
-
+    return null;
 }
 
 

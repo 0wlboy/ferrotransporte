@@ -39,15 +39,7 @@
           }
         }
       ],
-      "expo-sqlite",
-      [
-        "expo-navigation-bar",
-        {
-          "enforceContrast": true,
-          "hidden": false,
-          "style": "light"
-        }
-      ]
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

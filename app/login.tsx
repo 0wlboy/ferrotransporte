@@ -146,7 +146,11 @@ export default function Login() {
                         {/* Logo de la marca */}
                         <View style={styles.logoContainer}>
                             <View style={styles.logoSquare}>
-                                <Image src="../../assets/images/ferrominera-logo.png" />
+                                <Image
+                                    source={require('@/assets/images/ferrominera-logo.png')}
+                                    style={styles.logo}
+                                    resizeMode="contain"
+                                />
                             </View>
                         </View>
 
@@ -264,6 +268,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 6,
         elevation: 4,
+    },
+    logo: {
+        width: 56,
+        height: 56,
     },
     logoRing: {
         width: 48,
