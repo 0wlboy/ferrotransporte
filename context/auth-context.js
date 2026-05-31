@@ -19,11 +19,12 @@ import React, {
  *
  * @property {string} id          - UUID único del usuario en Supabase Auth.
  * @property {string} email       - Correo electrónico del usuario.
- * @property {string|null} nombre - Nombre del usuario (si fue registrado).
+ * @property {string|null} primer_nombre - Nombre del usuario (si fue registrado).
  * @property {string|null} apellido - Apellido del usuario (si fue registrado).
- * @property {string|null} telefono - Teléfono del usuario.
- * @property {string|null} cedula - Cédula del usuario.
- * @property {string|null} fotoUrl - URL de la foto del usuario.
+ * @property {string|null} telf - Teléfono del usuario.
+ * @property {string|null} ci_user - Cédula del usuario.
+ * @property {string|null} foto_url - URL de la foto del usuario.
+ * @property {string|null} gerencia - Gerencia a la que pertenece el usuario.
  * @property {string|null} role    - Rol del usuario en el sistema (ej: 'admin', 'conductor').
  * @property {string} createdAt   - Fecha de creación de la cuenta ISO 8601.
  */
@@ -38,6 +39,7 @@ import React, {
  * @property {Function} signIn                    - Inicia sesión con email y contraseña.
  * @property {Function} signUp                    - Registra un nuevo usuario.
  * @property {Function} signOut                   - Cierra la sesión y libera la memoria del dispositivo.
+ * @property {Function} updateProfile             - Actualiza el perfil del usuario.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,29 +149,55 @@ export function AuthProvider({ children }) {
    */
   const loadUserProfile = async (authUser) => {
     try {
+      console.log("[AuthContext] Cargando perfil para auth_id:", authUser.id);
+
       const { data: profile, error } = await supabase
         .from("usuarios")
         .select("*")
         .eq("auth_id", authUser.id)
         .single();
 
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 = no rows found (perfil aún no creado, es normal en registro)
-        console.error("[AuthContext] Error al cargar perfil:", error.message);
+      if (error) {
+        if (error.code === "PGRST116") {
+          console.warn(
+            "[AuthContext] No se encontró ningún registro en la tabla 'usuarios' para auth_id:",
+            authUser.id,
+          );
+        } else {
+          console.error(
+            "[AuthContext] Error al consultar la tabla 'usuarios':",
+            error.message,
+            "Código:",
+            error.code,
+          );
+        }
+      } else {
+        console.log(
+          "[AuthContext] Fila de usuario cargada exitosamente de la BD:",
+          profile,
+        );
       }
 
-      // Construir objeto de usuario en memoria fusionando datos de auth y perfil
+      // Construir objeto de usuario en memoria fusionando datos de auth, perfil consultado y authUser como fallback robusto
       const userProfile = {
         id: authUser.id,
-        email: authUser.email,
-        nombre: profile
-          ? `${profile.primer_nombre ?? ""} ${profile.apellido ?? ""}`.trim()
-          : null,
-        fotoUrl: profile?.foto_url ?? null,
-        gerencia: profile?.gerencia ?? null,
-        role: profile?.role ?? null,
-        createdAt: authUser.created_at,
+        email: authUser.email || profile?.email,
+        primer_nombre:
+          profile?.primer_nombre ?? authUser?.primer_nombre ?? null,
+        apellido: profile?.apellido ?? authUser?.apellido ?? null,
+        ci_user: profile?.ci_user ?? authUser?.ci_user ?? null,
+        telf: profile?.telf ?? authUser?.telf ?? null,
+        foto_url: profile?.foto_url ?? authUser?.foto_url ?? null,
+        gerencia: profile?.gerencia ?? authUser?.gerencia ?? null,
+        role: profile?.role ?? authUser?.role ?? "Pasajero",
+        createdAt:
+          authUser.created_at || authUser.createdAt || new Date().toISOString(),
       };
+
+      console.log(
+        "[AuthContext] Estado 'user' final a guardar en memoria:",
+        userProfile,
+      );
 
       // Guardar en memoria del estado React (no persistido aquí — eso lo hace Supabase)
       setUser(userProfile);
@@ -362,6 +390,17 @@ export function AuthProvider({ children }) {
               created_at: new Date().toISOString(),
             });
 
+          const DataUser = {
+            id: authData.user.id,
+            email: normalizedEmail,
+            primer_nombre: nombre.trim(),
+            apellido: apellido.trim(),
+            ci_user: ci,
+            telf: telefono,
+            foto_url: fotoPerfil ?? null,
+            gerencia: gerencia,
+          };
+
           if (insertError) {
             console.error(
               "[AuthContext] Error al crear perfil:",
@@ -371,7 +410,7 @@ export function AuthProvider({ children }) {
             // el usuario ya fue creado en Auth y se puede reintentar el perfil.
           } else {
             // Cargar el perfil recién creado en memoria para evitar condiciones de carrera con onAuthStateChange
-            await loadUserProfile(authData.user);
+            await loadUserProfile(DataUser);
           }
         }
 
@@ -390,6 +429,147 @@ export function AuthProvider({ children }) {
       }
     },
     [],
+  );
+
+  // ───────────────────────────────────────────────────────────────────────
+  // FUNCIÓN: Actualizar perfil
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Actualiza el perfil del usuario autenticado.
+   *
+   * Flujo:
+   * 1. Si se envió una imagen nueva, la sube a Storage y obtiene la URL pública.
+   * 2. Construye un objeto solo con los campos que realmente cambiaron (diff).
+   * 3. Si cambió el email o la contraseña, los actualiza en Supabase Auth.
+   * 4. Si hay campos de perfil modificados, los escribe en la tabla `usuarios`.
+   * 5. Actualiza el estado en memoria para reflejar los cambios sin recargar.
+   *
+   * @param {Object} params
+   * @param {import('@/components/ui/profile-picker').PickedImage|null} params.profileImage - Nueva imagen de perfil (opcional).
+   * @param {string} [params.primer_nombre] - Nuevo nombre.
+   * @param {string} [params.apellido]      - Nuevo apellido.
+   * @param {string} [params.telf]          - Nuevo teléfono.
+   * @param {string} [params.ci_user]       - Nueva cédula.
+   * @param {string} [params.gerencia]      - Nueva gerencia.
+   * @param {string} [params.email]         - Nuevo correo (actualiza Supabase Auth).
+   * @param {string} [params.password]      - Nueva contraseña (actualiza Supabase Auth).
+   * @returns {Promise<{success?: boolean, error?: string}>}
+   */
+  const updateProfile = useCallback(
+    async ({
+      profileImage = null,
+      primer_nombre,
+      apellido,
+      telf,
+      ci_user,
+      gerencia,
+      email: newEmail,
+      password: newPassword,
+    }) => {
+      if (!user?.id) {
+        return { error: "Usuario no autenticado." };
+      }
+
+      setIsLoading(true);
+
+      try {
+        // ── Paso 1: Subir imagen si se seleccionó una nueva ──
+        let nuevaFotoUrl = undefined;
+        if (profileImage) {
+          nuevaFotoUrl = await uploadImage(profileImage, {
+            bucket: "fotosPerfil",
+            userAuthId: user.id,
+            uniqueFileName: false,
+            upsert: true,
+          });
+
+          if (!nuevaFotoUrl) {
+            console.warn(
+              "[AuthContext] No se pudo subir la imagen. Continuando sin actualizar foto.",
+            );
+          }
+        }
+
+        // ── Paso 2: Construir objeto SOLO con campos que cambiaron ──
+        const dbChanges = {};
+
+        if (primer_nombre !== undefined && primer_nombre !== user.primer_nombre)
+          dbChanges.primer_nombre = primer_nombre;
+        if (apellido !== undefined && apellido !== user.apellido)
+          dbChanges.apellido = apellido;
+        if (telf !== undefined && telf !== user.telf)
+          dbChanges.telf = telf;
+        if (ci_user !== undefined && ci_user !== user.ci_user)
+          dbChanges.ci_user = ci_user;
+        if (gerencia !== undefined && gerencia !== user.gerencia)
+          dbChanges.gerencia = gerencia;
+        if (nuevaFotoUrl)
+          dbChanges.foto_url = nuevaFotoUrl;
+
+        // ── Paso 3: Actualizar email/password en Supabase Auth si cambiaron ──
+        const authChanges = {};
+        if (newEmail && newEmail !== user.email) authChanges.email = newEmail;
+        if (newPassword) authChanges.password = newPassword;
+
+        if (Object.keys(authChanges).length > 0) {
+          const { error: authUpdateError } = await supabase.auth.updateUser(authChanges);
+
+          if (authUpdateError) {
+            console.error(
+              "[AuthContext] Error al actualizar Auth:",
+              authUpdateError.message,
+            );
+            return { error: authUpdateError.message };
+          }
+
+          // Si cambió el email, reflejarlo también en la tabla usuarios
+          if (authChanges.email) {
+            dbChanges.email = authChanges.email;
+          }
+        }
+
+        // ── Paso 4: Persistir cambios de perfil en la tabla `usuarios` ──
+        if (Object.keys(dbChanges).length > 0) {
+          dbChanges.updated_at = new Date().toISOString();
+
+          const { error: updateError } = await supabase
+            .from("usuarios")
+            .update(dbChanges)
+            .eq("auth_id", user.id);
+
+          if (updateError) {
+            console.error(
+              "[AuthContext] Error al actualizar tabla usuarios:",
+              updateError.message,
+            );
+            return { error: updateError.message };
+          }
+        }
+
+        // ── Paso 5: Reflejar cambios en el estado en memoria ──
+        const memoryUpdate = { ...dbChanges };
+        if (authChanges.email) memoryUpdate.email = authChanges.email;
+
+        setUser((prev) => ({
+          ...prev,
+          ...memoryUpdate,
+        }));
+
+        console.log(
+          "[AuthContext] Perfil actualizado. Campos modificados:",
+          Object.keys({ ...dbChanges, ...authChanges }),
+        );
+
+        return { success: true };
+      } catch (err) {
+        console.error("[AuthContext] Error inesperado en updateProfile:", err);
+        return { error: "Ocurrió un error inesperado. Intenta de nuevo." };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user, uploadImage],
   );
 
   // ───────────────────────────────────────────────────────────────────────
@@ -493,6 +673,7 @@ export function AuthProvider({ children }) {
     signIn,
     signUp,
     signOut,
+    updateProfile,
   };
 
   return (

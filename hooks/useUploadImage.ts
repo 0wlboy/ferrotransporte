@@ -73,6 +73,46 @@ function generateUniqueFileName(originalName: string): string {
   return `${timestamp}_${random}.${extension}`;
 }
 
+/**
+ * Decodifica una cadena en base64 y la convierte en un ArrayBuffer para la subida de archivos en React Native.
+ * @param base64 - Cadena en formato base64.
+ */
+function decodeBase64(base64: string): ArrayBuffer {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const lookup = new Uint8Array(256);
+  for (let i = 0; i < chars.length; i++) {
+    lookup[chars.charCodeAt(i)] = i;
+  }
+
+  let bufferLength = base64.length * 0.75;
+  if (base64[base64.length - 1] === "=") {
+    bufferLength--;
+    if (base64[base64.length - 2] === "=") {
+      bufferLength--;
+    }
+  }
+
+  const arrayBuffer = new ArrayBuffer(bufferLength);
+  const bytes = new Uint8Array(arrayBuffer);
+
+  let p = 0;
+  for (let i = 0; i < base64.length; i += 4) {
+    const base640 = lookup[base64.charCodeAt(i)];
+    const base641 = lookup[base64.charCodeAt(i + 1)];
+    const base642 = lookup[base64.charCodeAt(i + 2)];
+    const base643 = lookup[base64.charCodeAt(i + 3)];
+
+    bytes[p++] = (base640 << 2) | (base641 >> 4);
+    if (p < bufferLength) {
+      bytes[p++] = ((base641 & 15) << 4) | (base642 >> 2);
+    }
+    if (p < bufferLength) {
+      bytes[p++] = ((base642 & 3) << 6) | (base643 & 63);
+    }
+  }
+  return arrayBuffer;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HOOK
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,24 +190,54 @@ export function useUploadImage(): UseUploadImageReturn {
         const fileName = uniqueFileName
           ? generateUniqueFileName(rawName)
           : rawName;
-        const folderPath = userAuthId;
+
+        let folderPath = userAuthId;
+
+        // Si no se proporciona userAuthId, intentamos obtenerlo de la sesión activa
+        // para garantizar que cumple con la política RLS del bucket
+        if (!folderPath) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.user) {
+            folderPath = session.user.id;
+          }
+        }
 
         // Construir la ruta completa dentro del bucket
         const storagePath = folderPath ? `${folderPath}/${fileName}` : fileName;
 
-        // ── 2. Preparar el archivo (URI para React Native) ──
-        const formData = new FormData();
-        const file = {
-          uri: image.uri,
-          name: fileName,
-          type: image.mimeType ?? "image/jpeg",
-        } as any;
-        formData.append("file", file);
+        // ── 2. Preparar el archivo (ArrayBuffer o Blob para React Native) ──
+        console.log("=== REVISANDO RUTA DE SUBIDA ===");
+        console.log("Bucket:", bucket);
+        console.log("Ruta construida (storagePath):", storagePath);
+
+        let uploadData: ArrayBuffer | Blob;
+
+        if (image.base64) {
+          console.log("[useUploadImage] Usando representación en base64 de la imagen...");
+          uploadData = decodeBase64(image.base64);
+        } else {
+          console.log("[useUploadImage] Base64 no disponible, usando puente XHR como fallback...");
+          uploadData = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.onload = function () {
+              resolve(xhr.response as Blob);
+            };
+            xhr.onerror = function (e) {
+              console.error("[useUploadImage] Error en XHR Puente:", e);
+              reject(new TypeError("Network request failed"));
+            };
+            xhr.responseType = "blob";
+            xhr.open("GET", image.uri, true);
+            xhr.send(null);
+          });
+        }
 
         // ── 3. Subir al bucket de Supabase Storage ──
         const { error: uploadError } = await supabase.storage
           .from(bucket)
-          .upload(storagePath, formData, {
+          .upload(storagePath, uploadData, {
             contentType: image.mimeType ?? "image/jpeg",
             upsert,
           });

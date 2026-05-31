@@ -5,11 +5,12 @@ import {
   type PickedImage,
 } from "@/components/ui/profile-picker";
 import { useAuth } from "@/context/auth-context";
-import { useUploadImage } from "@/hooks/useUploadImage";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import React, { useMemo, useState } from "react";
 import {
-  Image,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,30 +22,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VALIDACIONES
+// REGEX DE VALIDACIÓN  (solo se aplican si el campo fue modificado)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Regex para validar correo electrónico. */
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Regex para contraseña: mínimo 6 caracteres con al menos 1 letra mayuscula, 1 letra minuscula, 1 simbolo y 1 número. */
 const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':",.<>\/?\\|]).{6,}$/;
-
-/** Regex para nombre/apellido: letras (con acentos y ñ), espacios y guiones, 2-60 chars. */
 const NOMBRE_REGEX = /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s-]{2,60}$/;
-
-/** Regex para número de teléfono venezolano (+58 XXXXXXXXX). */
 const TELEFONO_REGEX = /^\+58\s?[0-9]{10}$/;
-
-/** Regex para cédula venezolana (V-XXXXXXXX). */
 const CI_REGEX = /^V-[0-9]{6,8}$/;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OPCIONES DE DEPARTAMENTO
+// OPCIONES DE GERENCIA
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Lista de departamentos disponibles para el selector. */
 const GERENCIAS = [
   "Gerencias",
   "Operaciones",
@@ -61,153 +52,153 @@ const GERENCIAS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Pantalla de registro de nuevos usuarios — "Registro de Usuario".
+ * EditProfile — Pantalla para editar el perfil del usuario autenticado.
  *
- * Campos del formulario:
- * - Foto de perfil (obligatoria, con previsualización en círculo)
- * - Nombre y Apellido (lado a lado)
- * - Teléfono y CI (lado a lado)
- * - Departamento (selector con dropdown)
- * - Correo electrónico
- * - Contraseña
- *
- * Responsabilidades:
- * - Validar localmente todos los campos con regex específicas.
- * - Delegar registro al contexto de auth (`useAuth().signUp`).
- * - Mostrar errores debajo de cada campo correspondiente.
- * - La imagen de perfil queda procesada y lista para enviarse a un backend futuro.
+ * Comportamiento clave:
+ * - Los campos se pre-rellenan con los datos actuales del usuario.
+ * - El botón "Guardar Cambios" se bloquea mientras ningún campo haya sido modificado.
+ * - Solo se envían a la BD los campos que realmente cambiaron (diff).
+ * - Ningún campo es obligatorio; solo se valida lo que el usuario tocó.
+ * - La imagen se sube a Storage solo si se seleccionó una nueva.
  */
-export default function SingIn() {
-  // ── Estado del formulario ──
+export default function EditProfile() {
+  const { user, updateProfile, isLoading } = useAuth();
+
+  // ── Valores originales (referencia para el diff) ──
+  const original = useMemo(
+    () => ({
+      primer_nombre: user?.primer_nombre ?? "",
+      apellido: user?.apellido ?? "",
+      telf: user?.telf ?? "",
+      ci_user: user?.ci_user ?? "",
+      gerencia: user?.gerencia ?? "Gerencias",
+      email: user?.email ?? "",
+    }),
+    // Solo calcular una vez al montar; user ya debería estar cargado
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // ── Estado del formulario (pre-rellenado con datos actuales) ──
   const [profileImage, setProfileImage] = useState<PickedImage | null>(null);
-  const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
-  const [telefono, setTelefono] = useState("+58 ");
-  const [ci, setCi] = useState("V-");
-  const [gerencia, setGerencia] = useState("Gerencias");
-  const [email, setEmail] = useState("");
+  const [nombre, setNombre] = useState(original.primer_nombre);
+  const [apellido, setApellido] = useState(original.apellido);
+  const [telefono, setTelefono] = useState(original.telf);
+  const [ci, setCi] = useState(original.ci_user);
+  const [gerencia, setGerencia] = useState(original.gerencia);
+  const [email, setEmail] = useState(original.email);
   const [password, setPassword] = useState("");
 
-  // ── Estado de errores por campo ──
-  const [profileError, setProfileError] = useState("");
+  // ── Errores de validación por campo ──
   const [nombreError, setNombreError] = useState("");
   const [apellidoError, setApellidoError] = useState("");
   const [telefonoError, setTelefonoError] = useState("");
   const [ciError, setCiError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [generalError, setGeneralError] = useState("");
 
-  // ── Dropdown de gerencia ──
+  // ── UI ──
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // ── Contexto de autenticación ──
-  const { signUp, isLoading } = useAuth();
-
-  // ── Subida de imagen de perfil a Supabase Storage ──
-  const { uploadImage, uploading, error: uploadError } = useUploadImage();
-
   // ───────────────────────────────────────────────────────────────────────
-  // MANEJADOR: Selección de imagen de perfil
+  // DETECCIÓN DE CAMBIOS — determina si el botón debe estar habilitado
   // ───────────────────────────────────────────────────────────────────────
 
   /**
-   * Recibe la imagen procesada del componente ProfilePicker.
-   * La imagen está lista para enviarse a un backend cuando se disponga de destino.
-   *
-   * @param {PickedImage} image - Metadatos de la imagen seleccionada.
+   * `hasChanges` es true si al menos un campo difiere del valor original
+   * o si se seleccionó una nueva imagen o se escribió una nueva contraseña.
    */
-  const handleImageSelected = (image: PickedImage) => {
-    setProfileImage(image);
-    if (profileError) setProfileError("");
-  };
+  const hasChanges = useMemo(() => {
+    return (
+      profileImage !== null ||
+      nombre.trim() !== original.primer_nombre.trim() ||
+      apellido.trim() !== original.apellido.trim() ||
+      telefono.trim() !== original.telf.trim() ||
+      ci.trim() !== original.ci_user.trim() ||
+      gerencia !== original.gerencia ||
+      email.trim() !== original.email.trim() ||
+      password.length > 0
+    );
+  }, [profileImage, nombre, apellido, telefono, ci, gerencia, email, password, original]);
 
   // ───────────────────────────────────────────────────────────────────────
-  // VALIDACIÓN LOCAL
+  // VALIDACIÓN — solo valida campos que cambiaron
   // ───────────────────────────────────────────────────────────────────────
 
-  /**
-   * Valida todos los campos del formulario con regex independientes.
-   * Reporta error de forma granular por campo.
-   *
-   * @returns {boolean} `true` si el formulario es válido.
-   */
-  const validateForm = (): boolean => {
+  const validateChangedFields = (): boolean => {
     let isValid = true;
 
-    // Validación de foto de perfil (campo obligatorio)
-    if (!profileImage) {
-      setProfileError("La foto de perfil es requerida.");
-      isValid = false;
-    } else {
-      setProfileError("");
-    }
-
-    // Validación del nombre
-    if (!nombre.trim()) {
-      setNombreError("El nombre es requerido.");
-      isValid = false;
-    } else if (!NOMBRE_REGEX.test(nombre.trim())) {
-      setNombreError("Solo letras y espacios (2-60 chars).");
-      isValid = false;
+    // Nombre — solo validar si fue modificado
+    if (nombre.trim() !== original.primer_nombre.trim()) {
+      if (!NOMBRE_REGEX.test(nombre.trim())) {
+        setNombreError("Solo letras y espacios (2-60 caracteres).");
+        isValid = false;
+      } else {
+        setNombreError("");
+      }
     } else {
       setNombreError("");
     }
 
-    // Validación del apellido
-    if (!apellido.trim()) {
-      setApellidoError("El apellido es requerido.");
-      isValid = false;
-    } else if (!NOMBRE_REGEX.test(apellido.trim())) {
-      setApellidoError("Solo letras y espacios (2-60 chars).");
-      isValid = false;
+    // Apellido — solo validar si fue modificado
+    if (apellido.trim() !== original.apellido.trim()) {
+      if (!NOMBRE_REGEX.test(apellido.trim())) {
+        setApellidoError("Solo letras y espacios (2-60 caracteres).");
+        isValid = false;
+      } else {
+        setApellidoError("");
+      }
     } else {
       setApellidoError("");
     }
 
-    // Validación del teléfono
-    const telefonoLimpio = telefono.trim();
-    if (!telefonoLimpio || telefonoLimpio === "+58") {
-      setTelefonoError("El teléfono es requerido.");
-      isValid = false;
-    } else if (!TELEFONO_REGEX.test(telefonoLimpio)) {
-      setTelefonoError("Formato: +58 XXXXXXXXXX");
-      isValid = false;
+    // Teléfono — solo validar si fue modificado
+    if (telefono.trim() !== original.telf.trim()) {
+      if (!TELEFONO_REGEX.test(telefono.trim())) {
+        setTelefonoError("Formato requerido: +58 XXXXXXXXXX");
+        isValid = false;
+      } else {
+        setTelefonoError("");
+      }
     } else {
       setTelefonoError("");
     }
 
-    // Validación de la cédula
-    const ciLimpio = ci.trim();
-    if (!ciLimpio || ciLimpio === "V-") {
-      setCiError("La cédula es requerida.");
-      isValid = false;
-    } else if (!CI_REGEX.test(ciLimpio)) {
-      setCiError("Formato: V-XXXXXXXX");
-      isValid = false;
+    // CI — solo validar si fue modificado
+    if (ci.trim() !== original.ci_user.trim()) {
+      if (!CI_REGEX.test(ci.trim())) {
+        setCiError("Formato requerido: V-XXXXXXXX");
+        isValid = false;
+      } else {
+        setCiError("");
+      }
     } else {
       setCiError("");
     }
 
-    // Validación del email
-    if (!email.trim()) {
-      setEmailError("El correo electrónico es requerido.");
-      isValid = false;
-    } else if (!EMAIL_REGEX.test(email.trim())) {
-      setEmailError("Ingresa un correo válido.");
-      isValid = false;
+    // Email — solo validar si fue modificado
+    if (email.trim() !== original.email.trim()) {
+      if (!EMAIL_REGEX.test(email.trim())) {
+        setEmailError("Ingresa un correo electrónico válido.");
+        isValid = false;
+      } else {
+        setEmailError("");
+      }
     } else {
       setEmailError("");
     }
 
-    // Validación de la contraseña
-    if (!password) {
-      setPasswordError("La contraseña es requerida.");
-      isValid = false;
-    } else if (!PASSWORD_REGEX.test(password)) {
-      setPasswordError(
-        "Mínimo 6 caracteres con 1 letra minuscula, 1 letra mayuscula, 1 simbolo (¿?¡!/&%$#) y 1 número.",
-      );
-      isValid = false;
+    // Contraseña — solo validar si el usuario escribió algo
+    if (password.length > 0) {
+      if (!PASSWORD_REGEX.test(password)) {
+        setPasswordError(
+          "Mín. 6 caracteres con mayúscula, minúscula, número y símbolo.",
+        );
+        isValid = false;
+      } else {
+        setPasswordError("");
+      }
     } else {
       setPasswordError("");
     }
@@ -216,49 +207,43 @@ export default function SingIn() {
   };
 
   // ───────────────────────────────────────────────────────────────────────
-  // MANEJADOR: Envío del formulario
+  // ENVÍO DEL FORMULARIO
   // ───────────────────────────────────────────────────────────────────────
 
-  /**
-   * Orquesta el proceso completo de registro:
-   * 1. Valida el formulario localmente.
-   * 2. Sube la foto de perfil al bucket `avatars` de Supabase Storage.
-   * 3. Delega al contexto de auth con la URL pública de la imagen.
-   */
-  const handleRegister = async () => {
-    if (!validateForm()) return;
+  const handleSave = async () => {
+    setGeneralError("");
 
-    // ── 1. Subir imagen de perfil ──
-    // profileImage siempre existe aquí porque validateForm() lo garantiza.
-    /* const avatarUrl = await uploadImage(profileImage!, {
-      bucket: "fotosPerfil",
-      uniqueFileName: true,
-      upsert: false,
-    });
+    if (!validateChangedFields()) return;
 
-    if (!avatarUrl) {
-      // El error real ya es logueado dentro del hook con console.error.
-      // No bloqueamos el registro si la subida falla — la foto es opcional
-      // y se puede actualizar más adelante desde el perfil.
-      console.warn(
-        "No se pudo subir la imagen de perfil. Continuando sin foto...",
+    // Construir payload solo con campos modificados
+    const payload: Record<string, unknown> = { profileImage };
+
+    if (nombre.trim() !== original.primer_nombre.trim())
+      payload.primer_nombre = nombre.trim();
+    if (apellido.trim() !== original.apellido.trim())
+      payload.apellido = apellido.trim();
+    if (telefono.trim() !== original.telf.trim())
+      payload.telf = telefono.trim();
+    if (ci.trim() !== original.ci_user.trim())
+      payload.ci_user = ci.trim();
+    if (gerencia !== original.gerencia)
+      payload.gerencia = gerencia;
+    if (email.trim() !== original.email.trim())
+      payload.email = email.trim();
+    if (password.length > 0)
+      payload.password = password;
+
+    const result = await updateProfile(payload);
+
+    if (result?.error) {
+      setGeneralError(result.error);
+    } else {
+      Alert.alert(
+        "¡Perfil actualizado!",
+        "Los cambios se guardaron correctamente.",
+        [{ text: "Aceptar", onPress: () => router.back() }],
       );
-    }*/
-
-    // ── 2. Registrar usuario en Supabase Auth ──
-    const { emailError: serverEmailError, generalError } = await signUp({
-      profileImage,
-      email,
-      password,
-      nombre: nombre.trim(),
-      apellido: apellido.trim(),
-      ci: ci.trim(),
-      telefono: telefono.trim(),
-      gerencia: gerencia,
-    });
-
-    if (serverEmailError) setEmailError(serverEmailError);
-    if (generalError) setEmailError(generalError);
+    }
   };
 
   // ───────────────────────────────────────────────────────────────────────
@@ -267,6 +252,7 @@ export default function SingIn() {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
+      <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -279,27 +265,32 @@ export default function SingIn() {
         >
           {/* ── Encabezado carmesí ── */}
           <View style={styles.headerContainer}>
-            {/* Logo de la marca */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logoSquare}>
-                <Image
-                  source={require("@/assets/images/ferrominera-logo.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-
-            {/* Título multilinea */}
-            <Text style={styles.headerTitle}>{"Registro de\nUsuario"}</Text>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+              style={styles.backButton}
+              accessibilityLabel="Volver"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons
+                name="arrow-left"
+                size={22}
+                color="#A10F2D"
+              />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Editar Perfil</Text>
+            <Text style={styles.headerSubtitle}>
+              Modifica solo los campos que deseas actualizar
+            </Text>
           </View>
 
           {/* ── Tarjeta del formulario ── */}
           <View style={styles.formCard}>
+
             {/* ── Selector de foto de perfil ── */}
             <ProfilePicker
-              onImageSelected={handleImageSelected}
-              error={profileError}
+              onImageSelected={(img) => setProfileImage(img)}
+              initialUri={user?.foto_url ?? undefined}
             />
 
             {/* ── Fila: Nombre | Apellido ── */}
@@ -307,7 +298,7 @@ export default function SingIn() {
               <View style={styles.halfField}>
                 <Input
                   label="Nombre"
-                  placeholder="Nombre"
+                  placeholder={original.primer_nombre || "Nombre"}
                   value={nombre}
                   onChangeText={(t) => {
                     setNombre(t);
@@ -321,7 +312,7 @@ export default function SingIn() {
               <View style={styles.halfFieldRight}>
                 <Input
                   label="Apellido"
-                  placeholder="Nombre"
+                  placeholder={original.apellido || "Apellido"}
                   value={apellido}
                   onChangeText={(t) => {
                     setApellido(t);
@@ -338,8 +329,8 @@ export default function SingIn() {
             <View style={styles.row}>
               <View style={styles.halfField}>
                 <Input
-                  label="Telefono"
-                  placeholder="+58 4129807"
+                  label="Teléfono"
+                  placeholder={original.telf || "+58 XXXXXXXXXX"}
                   value={telefono}
                   onChangeText={(t) => {
                     setTelefono(t);
@@ -353,7 +344,7 @@ export default function SingIn() {
               <View style={styles.halfFieldRight}>
                 <Input
                   label="CI"
-                  placeholder="V-00000000"
+                  placeholder={original.ci_user || "V-XXXXXXXX"}
                   value={ci}
                   onChangeText={(t) => {
                     setCi(t);
@@ -365,19 +356,25 @@ export default function SingIn() {
               </View>
             </View>
 
-            {/* ── gerencia (dropdown) ── */}
+            {/* ── Gerencia (dropdown) ── */}
             <View style={styles.dropdownWrapper}>
               <Text style={styles.dropdownLabel}>Gerencia</Text>
               <TouchableOpacity
-                style={styles.dropdownButton}
+                style={[
+                  styles.dropdownButton,
+                  gerencia !== original.gerencia && styles.dropdownButtonChanged,
+                ]}
                 onPress={() => setShowDropdown(!showDropdown)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.dropdownSelected}>{gerencia}</Text>
-                <Text style={styles.dropdownChevron}>▾</Text>
+                <MaterialCommunityIcons
+                  name={showDropdown ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#A10F2D"
+                />
               </TouchableOpacity>
 
-              {/* Lista desplegable */}
               {showDropdown && (
                 <View style={styles.dropdownList}>
                   {GERENCIAS.map((ger) => (
@@ -400,6 +397,13 @@ export default function SingIn() {
                       >
                         {ger}
                       </Text>
+                      {ger === gerencia && (
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={16}
+                          color="#A10F2D"
+                        />
+                      )}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -408,8 +412,8 @@ export default function SingIn() {
 
             {/* ── Correo electrónico ── */}
             <Input
-              label="Correo"
-              placeholder="email@email.com"
+              label="Correo electrónico"
+              placeholder={original.email || "correo@ejemplo.com"}
               value={email}
               onChangeText={(t) => {
                 setEmail(t);
@@ -421,10 +425,10 @@ export default function SingIn() {
               autoCapitalize="none"
             />
 
-            {/* ── Contraseña ── */}
+            {/* ── Nueva contraseña (opcional) ── */}
             <Input
-              label="Contraseña"
-              placeholder="Password"
+              label="Nueva contraseña (opcional)"
+              placeholder="Dejar vacío para no cambiarla"
               value={password}
               onChangeText={(t) => {
                 setPassword(t);
@@ -435,25 +439,40 @@ export default function SingIn() {
               autoComplete="new-password"
             />
 
-            {/* ── Botón de registro ── */}
+            {/* ── Error general ── */}
+            {generalError ? (
+              <View style={styles.generalErrorContainer}>
+                <MaterialCommunityIcons
+                  name="alert-circle-outline"
+                  size={16}
+                  color="#A10F2D"
+                />
+                <Text style={styles.generalErrorText}>{generalError}</Text>
+              </View>
+            ) : null}
+
+            {/* ── Aviso si no hay cambios ── */}
+            {!hasChanges && (
+              <View style={styles.noChangesHint}>
+                <MaterialCommunityIcons
+                  name="information-outline"
+                  size={15}
+                  color="#9A9A9A"
+                />
+                <Text style={styles.noChangesText}>
+                  Modifica al menos un campo para guardar
+                </Text>
+              </View>
+            )}
+
+            {/* ── Botón Guardar ── */}
             <Button
-              title="Registrar Usuario"
-              onPress={handleRegister}
-              isLoading={isLoading || uploading}
+              title="Guardar Cambios"
+              onPress={handleSave}
+              isLoading={isLoading}
+              disabled={!hasChanges || isLoading}
               containerStyle={styles.submitButton}
             />
-
-            {/* ── Link: ¿Ya estás registrado? ── */}
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.loginLinkContainer}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.linkTextNormal}>
-                ¿Estas registrado?{" "}
-                <Text style={styles.linkTextRed}>Haz click aqui</Text>
-              </Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -481,28 +500,22 @@ const styles = StyleSheet.create({
   // ── Encabezado ──
   headerContainer: {
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === "ios" ? 30 : 48,
+    paddingTop: Platform.OS === "ios" ? 16 : 32,
     paddingBottom: 30,
   },
-  logoContainer: {
-    marginBottom: 25,
-  },
-  logoSquare: {
-    width: 68,
-    height: 68,
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  logo: {
-    width: 56,
-    height: 56,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 34,
@@ -510,6 +523,12 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     letterSpacing: 0.3,
     lineHeight: 40,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 6,
+    fontWeight: "400",
   },
 
   // ── Tarjeta ──
@@ -520,13 +539,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: 20,
     paddingTop: 28,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
 
-  // ── Filas de 2 columnas ──
+  // ── Filas ──
   row: {
     flexDirection: "row",
-    marginBottom: 0,
   },
   halfField: {
     flex: 1,
@@ -537,7 +555,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // ── Dropdown de departamento ──
+  // ── Dropdown de gerencia ──
   dropdownWrapper: {
     marginBottom: 16,
     zIndex: 999,
@@ -552,24 +570,24 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#F5D6DB",
+    borderColor: "#E8E8EC",
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 14,
   },
+  dropdownButtonChanged: {
+    borderColor: "#A10F2D",
+    backgroundColor: "#FFF8F9",
+  },
   dropdownSelected: {
     fontSize: 15,
     color: "#2E2E2E",
   },
-  dropdownChevron: {
-    fontSize: 16,
-    color: "#A10F2D",
-  },
   dropdownList: {
     position: "absolute",
-    top: 80,
+    top: 82,
     left: 0,
     right: 0,
     backgroundColor: "#FFFFFF",
@@ -580,7 +598,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 10,
     overflow: "hidden",
   },
   dropdownItem: {
@@ -588,6 +606,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#FFF0F2",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   dropdownItemActive: {
     backgroundColor: "#FFF0F2",
@@ -601,21 +622,40 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ── Acciones ──
+  // ── Feedback ──
+  generalErrorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFF0F2",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  generalErrorText: {
+    fontSize: 13,
+    color: "#A10F2D",
+    flex: 1,
+    flexWrap: "wrap",
+  },
+  noChangesHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+    justifyContent: "center",
+  },
+  noChangesText: {
+    fontSize: 13,
+    color: "#9A9A9A",
+  },
+
+  // ── Botón ──
   submitButton: {
     marginTop: 8,
-    marginBottom: 20,
   },
-  loginLinkContainer: {
-    alignSelf: "center",
-  },
-  linkTextNormal: {
-    fontSize: 14,
-    color: "#2E2E2E",
-    fontWeight: "500",
-  },
-  linkTextRed: {
-    color: "#A10F2D",
-    fontWeight: "700",
+  submitButtonDisabled: {
+    opacity: 0.5,
   },
 });
