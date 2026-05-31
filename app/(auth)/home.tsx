@@ -5,13 +5,13 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import React from "react";
 import {
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,19 +77,12 @@ function getActionButton(role: string | null): {
         icon: "steering",
         route: "/(auth)/(tabs)/viajes",
       };
-    case "Administrador":
-    case "Admin":
-      return {
-        label: "Gestionar Peticiones",
-        icon: "clipboard-list",
-        route: "/(auth)/(tabs)/admin",
-      };
     case "Pasajero":
     default:
       return {
         label: "Pedir Vehículo",
         icon: "van-utility",
-        route: "/(auth)/(tabs)/solicitar",
+        route: "/(auth)/petition",
       };
   }
 }
@@ -164,8 +157,7 @@ export default function Home() {
           style={styles.actionButton}
           activeOpacity={0.85}
           onPress={() => {
-            // La navegación real se conectará cuando las rutas estén listas
-            console.log("Acción principal presionada para rol:", user?.role);
+            router.push(getActionButton(user?.role ?? null).route as any);
           }}
         >
           <MaterialCommunityIcons

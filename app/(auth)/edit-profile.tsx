@@ -120,7 +120,17 @@ export default function EditProfile() {
       email.trim() !== original.email.trim() ||
       password.length > 0
     );
-  }, [profileImage, nombre, apellido, telefono, ci, gerencia, email, password, original]);
+  }, [
+    profileImage,
+    nombre,
+    apellido,
+    telefono,
+    ci,
+    gerencia,
+    email,
+    password,
+    original,
+  ]);
 
   // ───────────────────────────────────────────────────────────────────────
   // VALIDACIÓN — solo valida campos que cambiaron
@@ -224,14 +234,10 @@ export default function EditProfile() {
       payload.apellido = apellido.trim();
     if (telefono.trim() !== original.telf.trim())
       payload.telf = telefono.trim();
-    if (ci.trim() !== original.ci_user.trim())
-      payload.ci_user = ci.trim();
-    if (gerencia !== original.gerencia)
-      payload.gerencia = gerencia;
-    if (email.trim() !== original.email.trim())
-      payload.email = email.trim();
-    if (password.length > 0)
-      payload.password = password;
+    if (ci.trim() !== original.ci_user.trim()) payload.ci_user = ci.trim();
+    if (gerencia !== original.gerencia) payload.gerencia = gerencia;
+    if (email.trim() !== original.email.trim()) payload.email = email.trim();
+    if (password.length > 0) payload.password = password;
 
     const result = await updateProfile(payload);
 
@@ -286,7 +292,6 @@ export default function EditProfile() {
 
           {/* ── Tarjeta del formulario ── */}
           <View style={styles.formCard}>
-
             {/* ── Selector de foto de perfil ── */}
             <ProfilePicker
               onImageSelected={(img) => setProfileImage(img)}
@@ -362,7 +367,8 @@ export default function EditProfile() {
               <TouchableOpacity
                 style={[
                   styles.dropdownButton,
-                  gerencia !== original.gerencia && styles.dropdownButtonChanged,
+                  gerencia !== original.gerencia &&
+                    styles.dropdownButtonChanged,
                 ]}
                 onPress={() => setShowDropdown(!showDropdown)}
                 activeOpacity={0.8}
