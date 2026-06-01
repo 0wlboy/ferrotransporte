@@ -180,8 +180,7 @@ export default function Home() {
         <TouchableOpacity
           style={styles.verMasButton}
           activeOpacity={0.85}
-          onPress={() => {
-            console.log("Ver más viajes");
+          onPress={()=> {router.push("/record")
           }}
         >
           <Text style={styles.verMasText}>Ver Mas</Text>

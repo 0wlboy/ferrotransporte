@@ -40,6 +40,14 @@ export default function TabLayout() {
           tabBarStyle: { display: "none" },
         }}
       />
+            <Tabs.Screen
+        name="record"
+        options={{
+          title: "Historial de Viajes",
+          headerShown: false,
+          tabBarStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }
