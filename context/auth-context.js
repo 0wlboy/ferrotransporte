@@ -431,6 +431,28 @@ export function AuthProvider({ children }) {
     [],
   );
 
+  const resetPassword = useCallback(async (email) => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "/login",
+      });
+
+      if (error) throw error;
+
+      console.log("Correo de restablecimiento enviado correctamente.");
+      // Aquí puedes redirigir al usuario a una pantalla de confirmación
+      router.replace("/resetPassword");
+    } catch (error) {
+      console.error("Error al restablecer la contraseña:", error.message);
+      setError("Error al restablecer la contraseña: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // ───────────────────────────────────────────────────────────────────────
   // FUNCIÓN: Actualizar perfil
   // ───────────────────────────────────────────────────────────────────────
@@ -674,6 +696,7 @@ export function AuthProvider({ children }) {
     signUp,
     signOut,
     updateProfile,
+    resetPassword,
   };
 
   return (
@@ -701,7 +724,7 @@ export function useAuth() {
   if (!context) {
     throw new Error(
       "[useAuth] El hook debe usarse dentro de un <AuthProvider>. " +
-        "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
+      "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
     );
   }
   return context;
