@@ -7,15 +7,14 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -191,18 +190,15 @@ export default function Login() {
 
             {/* Link: ¿Olvidaste tu contraseña? */}
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  "Recuperar contraseña",
-                  "Revisa tu correo para recuperar tu contraseña.",
-                )
-              }
+              onPress={() => router.push("/resetPassword")}
               style={styles.forgotPasswordContainer}
               activeOpacity={0.6}
             >
               <Text style={styles.linkTextNormal}>
                 ¿Olvidaste tu contraseña?{" "}
-                <Text style={styles.linkTextRed}>Haz click aqui</Text>
+                <Text style={styles.linkTextRed}>
+                  Reinicia tu contraseña aqui
+                </Text>
               </Text>
             </TouchableOpacity>
 
@@ -222,7 +218,7 @@ export default function Login() {
             >
               <Text style={styles.linkTextNormal}>
                 ¿No estas registrado?{" "}
-                <Text style={styles.linkTextRed}>Haz click aqui</Text>
+                <Text style={styles.linkTextRed}>Registrate aqui</Text>
               </Text>
             </TouchableOpacity>
           </View>

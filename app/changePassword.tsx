@@ -1,12 +1,12 @@
-// nuevo comentario
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
+import { supabase } from "@/utils/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -20,36 +20,162 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VALIDACIONES
+// VALIDACIONES Y UTILIDADES
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Expresión regular para validar el formato de un correo electrónico.
- * Exige al menos: [algo]@[algo].[algo]
+ * Expresión regular para validar la fortaleza de una contraseña.
+ * Requiere mínimo 6 caracteres, al menos 1 letra y 1 número.
  */
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+
+/**
+ * Parsea los parámetros de recuperación de una URL (soportando fragmentos '#' y consulta '?').
+ */
+const parseRecoveryParams = (url: string) => {
+  const params: { [key: string]: string } = {};
+
+  const parsePart = (part: string) => {
+    const pairs = part.split("&");
+    for (const pair of pairs) {
+      const [key, value] = pair.split("=");
+      if (key) {
+        params[decodeURIComponent(key)] = decodeURIComponent(value || "");
+      }
+    }
+  };
+
+  const hashIndex = url.indexOf("#");
+  if (hashIndex !== -1) {
+    parsePart(url.slice(hashIndex + 1));
+  }
+
+  const queryIndex = url.indexOf("?");
+  if (queryIndex !== -1) {
+    const endOfQuery = hashIndex !== -1 && hashIndex > queryIndex ? hashIndex : url.length;
+    parsePart(url.slice(queryIndex + 1, endOfQuery));
+  }
+
+  return params;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Pantalla de recuperacion de contraseña
+ * Pantalla de cambio de contraseña
  *
  * Responsabilidades:
  * - Validar localmente el formato de email y fortaleza de contraseña con regex.
- * - Delegar la autenticación real a `useAuth().signIn`.
  * - Mostrar errores dinámicos del servidor bajo los inputs correspondientes.
- * - Navegar al home tras autenticación exitosa (manejado por el contexto).
  */
-export default function ResetPassword() {
+export default function ChangePassword() {
   // ── Estado del formulario ──
-  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   // ── Estado de errores locales (validación regex) ──
-  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   // ── Contexto de autenticación ──
-  const { sendResetEmail, isLoading } = useAuth();
+  const { resetPassword, isLoading, isAuthenticated } = useAuth();
+
+  // ── Efecto para establecer la sesión desde el deep link de recuperación ──
+  useEffect(() => {
+    let isMounted = true;
+
+    const handleSessionAndDeepLink = async () => {
+      // 1. Si ya estamos autenticados en el contexto (sesión activa en memoria), no hacemos nada
+      if (isAuthenticated) {
+        return;
+      }
+
+      // 2. Si no, consultamos si ya hay una sesión activa de Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        return;
+      }
+
+      const processDeepLinkUrl = async (url: string) => {
+        console.log("[changePassword] Procesando URL:", url);
+        const params = parseRecoveryParams(url);
+
+        // Flujo 1: Implicit flow (tiene access_token y refresh_token en el hash)
+        if (params.access_token && params.refresh_token) {
+          const { error } = await supabase.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token,
+          });
+          if (!error) {
+            console.log("[changePassword] Sesión establecida por token implícito.");
+            return true;
+          } else {
+            console.error("[changePassword] Error al setSession:", error.message);
+          }
+        }
+
+        // Flujo 2: PKCE flow (tiene code en la query string)
+        if (params.code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(params.code);
+          if (!error) {
+            console.log("[changePassword] Sesión establecida por código PKCE.");
+            return true;
+          } else {
+            console.error("[changePassword] Error al exchangeCodeForSession:", error.message);
+          }
+        }
+
+        return false;
+      };
+
+      // 3. Obtenemos la URL inicial (si el link abrió la app)
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl) {
+          const success = await processDeepLinkUrl(initialUrl);
+          if (success) return;
+        }
+      } catch (err) {
+        console.error("Error al obtener la URL inicial:", err);
+      }
+
+      // 4. Si no hay sesión inicial, configuramos el listener para URLs subsecuentes
+      const subscription = Linking.addEventListener("url", async (event) => {
+        if (event.url && isMounted) {
+          const success = await processDeepLinkUrl(event.url);
+          if (success) return;
+        }
+      });
+
+      // Si tras verificar no hay sesión activa ni se pudo establecer mediante URL,
+      // lanzamos la alerta y redirección tras un breve lapso de inicialización.
+      const timeoutId = setTimeout(async () => {
+        if (!isMounted) return;
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession) {
+          Alert.alert(
+            "Enlace expirado o inválido",
+            "El enlace de recuperación ya no es válido o ha expirado. Por favor, solicita un nuevo correo.",
+            [{ text: "Entendido", onPress: () => router.replace("/login") }]
+          );
+        }
+      }, 1500);
+
+      return () => {
+        subscription.remove();
+        clearTimeout(timeoutId);
+      };
+    };
+
+    let cleanupFn: (() => void) | undefined;
+    handleSessionAndDeepLink().then((cleanup) => {
+      cleanupFn = cleanup;
+    });
+
+    return () => {
+      isMounted = false;
+      if (cleanupFn) cleanupFn();
+    };
+  }, [isAuthenticated]);
 
   // ───────────────────────────────────────────────────────────────────────
   // VALIDACIÓN LOCAL
@@ -64,15 +190,15 @@ export default function ResetPassword() {
   const validateForm = () => {
     let isValid = true;
 
-    // Validación de email
-    if (!email.trim()) {
-      setEmailError("El correo electrónico es requerido.");
+    //validacion de contraseña
+    if (!password) {
+      setPasswordError("La contraseña es requerida.");
       isValid = false;
-    } else if (!EMAIL_REGEX.test(email.trim())) {
-      setEmailError("Ingresa un correo electrónico válido.");
+    } else if (!PASSWORD_REGEX.test(password)) {
+      setPasswordError("Mínimo 6 caracteres con al menos 1 letra y 1 número.");
       isValid = false;
     } else {
-      setEmailError("");
+      setPasswordError("");
     }
 
     return isValid;
@@ -87,18 +213,18 @@ export default function ResetPassword() {
    * Primero valida localmente y luego delega al contexto de auth.
    * Los errores del servidor se muestran como error en el campo de correo.
    */
-  const handleSendEmail = async () => {
+  const updatePassword = async () => {
     if (!validateForm()) return;
 
-    const { error } = await sendResetEmail(email);
+    const { error } = await resetPassword(password);
 
     if (error) {
-      // Mostrar el error del servidor bajo el campo de email
-      setEmailError(error);
+      // Mostrar el error del servidor bajo el campo de password
+      setPasswordError(error);
     } else {
       Alert.alert(
-        "Correo enviado",
-        "Hemos enviado un enlace de recuperación a tu correo electrónico. Por favor, revísalo para restablecer tu contraseña.",
+        "Contraseña actualizada",
+        "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.",
         [{ text: "Entendido", onPress: () => router.replace("/login") }]
       );
     }
@@ -143,25 +269,24 @@ export default function ResetPassword() {
 
           {/* ── Tarjeta del formulario (fondo blanco) ── */}
           <View style={styles.formCard}>
-            {/* Campo: Correo electrónico */}
+            {/* Campo: Contraseña */}
             <Input
-              label="Introduce tu Correo"
-              placeholder="email@email.com"
-              value={email}
+              label="Nueva Contraseña"
+              placeholder="****************"
+              value={password}
               onChangeText={(text) => {
-                setEmail(text);
-                if (emailError) setEmailError("");
+                setPassword(text);
+                if (passwordError) setPasswordError("");
               }}
-              error={emailError}
-              keyboardType="email-address"
-              autoComplete="email"
-              autoCapitalize="none"
+              error={passwordError}
+              secureTextEntry
+              autoComplete="password"
             />
 
             {/* Botón de inicio de sesión */}
             <Button
-              title="Enviar"
-              onPress={handleSendEmail}
+              title="Cambiar Contraseña"
+              onPress={updatePassword}
               isLoading={isLoading}
               containerStyle={styles.submitButton}
             />

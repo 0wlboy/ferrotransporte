@@ -451,7 +451,7 @@ export default function SingIn() {
             >
               <Text style={styles.linkTextNormal}>
                 ¿Estas registrado?{" "}
-                <Text style={styles.linkTextRed}>Haz click aqui</Text>
+                <Text style={styles.linkTextRed}>Inicia sesión aqui</Text>
               </Text>
             </TouchableOpacity>
           </View>

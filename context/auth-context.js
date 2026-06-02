@@ -1,5 +1,6 @@
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { supabase } from "@/utils/supabase";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import React, {
   createContext,
@@ -39,6 +40,8 @@ import React, {
  * @property {Function} signIn                    - Inicia sesión con email y contraseña.
  * @property {Function} signUp                    - Registra un nuevo usuario.
  * @property {Function} signOut                   - Cierra la sesión y libera la memoria del dispositivo.
+ * @property {Function} sendResetEmail             - Envia un correo para reiniciar la contraseña
+ * @property {Function} resetPassword             - Actualiza la contraseña de Usuario
  * @property {Function} updateProfile             - Actualiza el perfil del usuario.
  */
 
@@ -74,6 +77,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [error, setError] = useState(null);
 
   const { uploadImage, uploading, error: uploadError } = useUploadImage();
 
@@ -431,23 +435,58 @@ export function AuthProvider({ children }) {
     [],
   );
 
-  const resetPassword = useCallback(async (email) => {
+  // ───────────────────────────────────────────────────────────────────────
+  // FUNCIÓN: Enviar email de renicio de contraseña
+  // ───────────────────────────────────────────────────────────────────────
+
+  const sendResetEmail = useCallback(async (email) => {
     try {
       setError(null);
       setIsLoading(true);
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "/login",
+      const redirectUrl = Linking.createURL("/changePassword");
+      console.log("[AuthContext] URL de redirección generada para restablecimiento:", redirectUrl);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: redirectUrl,
       });
 
       if (error) throw error;
 
       console.log("Correo de restablecimiento enviado correctamente.");
-      // Aquí puedes redirigir al usuario a una pantalla de confirmación
-      router.replace("/resetPassword");
+      return { error: null };
     } catch (error) {
       console.error("Error al restablecer la contraseña:", error.message);
-      setError("Error al restablecer la contraseña: " + error.message);
+      const friendlyError = mapAuthError(error.message);
+      setError(friendlyError);
+      return { error: friendlyError };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ───────────────────────────────────────────────────────────────────────
+  // FUNCIÓN: Reinicia la contraseña
+  // ───────────────────────────────────────────────────────────────────────
+
+  const resetPassword = useCallback(async (newPassword) => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      console.log("Contraseña actualizada correctamente.");
+      return { error: null };
+    } catch (error) {
+      console.error("Error al actualizar la contraseña:", error.message);
+      const friendlyError = mapAuthError(error.message);
+      setError(friendlyError);
+      return { error: friendlyError };
     } finally {
       setIsLoading(false);
     }
@@ -520,14 +559,12 @@ export function AuthProvider({ children }) {
           dbChanges.primer_nombre = primer_nombre;
         if (apellido !== undefined && apellido !== user.apellido)
           dbChanges.apellido = apellido;
-        if (telf !== undefined && telf !== user.telf)
-          dbChanges.telf = telf;
+        if (telf !== undefined && telf !== user.telf) dbChanges.telf = telf;
         if (ci_user !== undefined && ci_user !== user.ci_user)
           dbChanges.ci_user = ci_user;
         if (gerencia !== undefined && gerencia !== user.gerencia)
           dbChanges.gerencia = gerencia;
-        if (nuevaFotoUrl)
-          dbChanges.foto_url = nuevaFotoUrl;
+        if (nuevaFotoUrl) dbChanges.foto_url = nuevaFotoUrl;
 
         // ── Paso 3: Actualizar email/password en Supabase Auth si cambiaron ──
         const authChanges = {};
@@ -535,7 +572,8 @@ export function AuthProvider({ children }) {
         if (newPassword) authChanges.password = newPassword;
 
         if (Object.keys(authChanges).length > 0) {
-          const { error: authUpdateError } = await supabase.auth.updateUser(authChanges);
+          const { error: authUpdateError } =
+            await supabase.auth.updateUser(authChanges);
 
           if (authUpdateError) {
             console.error(
@@ -696,6 +734,7 @@ export function AuthProvider({ children }) {
     signUp,
     signOut,
     updateProfile,
+    sendResetEmail,
     resetPassword,
   };
 
@@ -724,7 +763,7 @@ export function useAuth() {
   if (!context) {
     throw new Error(
       "[useAuth] El hook debe usarse dentro de un <AuthProvider>. " +
-      "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
+        "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
     );
   }
   return context;
