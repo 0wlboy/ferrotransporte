@@ -62,7 +62,7 @@ export interface UseGetPetitionOptions {
     /** Role of the active user: "Pasajero" | "Conductor" (case-insensitive). */
     role?: "Pasajero" | "Conductor" | string | null;
     /** If true, filters out any petitions with state equal to 'por asignacion'. Default is true. */
-    excludePorAsignacion?: boolean;
+    includePorAsignacion?: "por asignacion" | "completado" | "cancelado" | "En camino" | string | null;
 }
 
 /**
@@ -135,7 +135,7 @@ const SCHEMA: SchemaConfig = {
  * @param options - Configuration options for filtering and behavior.
  */
 export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetitionReturn {
-    const { userId, role, excludePorAsignacion = true } = options;
+    const { userId, role, includePorAsignacion = "Completado" } = options;
 
     const [petitions, setPetitions] = useState<PetitionData[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -149,8 +149,8 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
             let query = supabase.from("peticiones").select(SCHEMA.select);
 
             // 1. Exclude status 'por asignacion' if requested
-            if (excludePorAsignacion) {
-                query = query.neq("estado", "por asignacion");
+            if (includePorAsignacion) {
+                query = query.eq("estado", includePorAsignacion);
             }
 
             // 2. Apply dynamic role filtering if userId & role are provided
@@ -231,12 +231,12 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
         } finally {
             setIsLoading(false);
         }
-    }, [userId, role, excludePorAsignacion]);
+    }, [userId, role, includePorAsignacion]);
 
     // Fetch data on mount and whenever options change
     useEffect(() => {
         fetchPetitions();
-    }, [userId, role, excludePorAsignacion]);
+    }, [userId, role, includePorAsignacion]);
 
     return {
         petitions,

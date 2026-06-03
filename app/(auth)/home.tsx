@@ -73,9 +73,9 @@ function getActionButton(role: string | null): {
   switch (role) {
     case "Conductor":
       return {
-        label: "Ver Mis Viajes",
-        icon: "steering",
-        route: "/(auth)/(tabs)/viajes",
+        label: "Ver Buzon de Entradas",
+        icon: "mailbox-open-outline",
+        route: "/(auth)/inbox",
       };
     case "Pasajero":
     default:
@@ -180,7 +180,8 @@ export default function Home() {
         <TouchableOpacity
           style={styles.verMasButton}
           activeOpacity={0.85}
-          onPress={()=> {router.push("/record")
+          onPress={() => {
+            router.push("/record")
           }}
         >
           <Text style={styles.verMasText}>Ver Mas</Text>
