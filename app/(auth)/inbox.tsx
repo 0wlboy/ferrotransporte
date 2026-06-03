@@ -23,9 +23,8 @@ export default function Inbox() {
 
     // 1. Fetch petitions using custom useGetPetition hook
     const { petitions, isLoading, error, refetch } = useGetPetition({
-        userId: user?.ci_user || user?.id,
         role: "Conductor",
-        includePorAsignacion: "por Asignacion"
+        asignacion: "Pendiente"
     });
 
     // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
@@ -81,7 +80,7 @@ export default function Inbox() {
                 </TouchableOpacity>
 
                 {/* Header Title */}
-                <Text style={styles.headerTitle}>Historial de{"\n"}Viajes</Text>
+                <Text style={styles.headerTitle}>Buzon de{"\n"}Entrada</Text>
             </View>
 
             {/* ── MAIN CONTENT CONTAINER ── */}

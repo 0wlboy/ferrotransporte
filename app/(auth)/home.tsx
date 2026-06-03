@@ -1,6 +1,7 @@
 import { PetitionCardSmall, TripRecord } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
+import { useGetPetition } from "@/hooks/useGetPetition";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import React from "react";
@@ -101,7 +102,10 @@ export default function Home() {
   );
 
   // Mostrar solo los 2 más recientes en el resumen
-  const recentTrips = PLACEHOLDER_TRIPS.slice(0, 2);
+  const recentTrips = useGetPetition({
+    userId: user?.ci_user,
+    role: user?.role,
+  });
 
   return (
     <View style={styles.screen}>

@@ -12,7 +12,7 @@ export interface PetitionData {
     /** Unique ID of the petition. */
     id: string;
     /** Passenger / Requester ID (e.g. CI or UUID). */
-    passenger_id: string;
+    pasajero_id: string;
     /** Assigned driver / conductor ID (if any). */
     driver_id: string | null;
     /** Origin location name or text. */
@@ -32,6 +32,14 @@ export interface PetitionData {
 
     /** Passenger user profile details (joined). */
     usuario?: {
+        /** Combined first and last name. */
+        nombre: string;
+        /** Profile picture URL. */
+        foto_url: string | null;
+    } | null;
+
+    /** Driver user profile details (joined). */
+    conductor?: {
         /** Combined first and last name. */
         nombre: string;
         /** Profile picture URL. */
@@ -62,7 +70,7 @@ export interface UseGetPetitionOptions {
     /** Role of the active user: "Pasajero" | "Conductor" (case-insensitive). */
     role?: "Pasajero" | "Conductor" | string | null;
     /** If true, filters out any petitions with state equal to 'por asignacion'. Default is true. */
-    includePorAsignacion?: "por asignacion" | "completado" | "cancelado" | "En camino" | string | null;
+    asignacion?: "Pendiente" | "Completado" | "Cancelado" | "En Camino" | string | null;
 }
 
 /**
@@ -95,22 +103,19 @@ interface SchemaConfig {
 const SCHEMA: SchemaConfig = {
     select: `
     *,
-    usuario:usuarios!passenger_id (
+    usuario:usuarios!ci_pasajero (
       primer_nombre,
       apellido,
       foto_url
     ),
-    localizacion:localizaciones!localizacion_id (
-      nombre
-    ),
-    vehiculo:vehiculos!vehiculo_id (
-      foto_url,
-      imagen_url,
-      modelo
+    conductor:usuarios!ci_driver (
+      primer_nombre,
+      apellido,
+      foto_url
     )
   `,
-    passengerCol: "passenger_id",
-    driverCol: "driver_id",
+    passengerCol: "ci_pasajero",
+    driverCol: "ci_driver",
 
 };
 
@@ -135,7 +140,7 @@ const SCHEMA: SchemaConfig = {
  * @param options - Configuration options for filtering and behavior.
  */
 export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetitionReturn {
-    const { userId, role, includePorAsignacion = "Completado" } = options;
+    const { userId = null, role = null, asignacion = null } = options;
 
     const [petitions, setPetitions] = useState<PetitionData[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -149,8 +154,8 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
             let query = supabase.from("peticiones").select(SCHEMA.select);
 
             // 1. Exclude status 'por asignacion' if requested
-            if (includePorAsignacion) {
-                query = query.eq("estado", includePorAsignacion);
+            if (asignacion) {
+                query = query.eq("estado", asignacion);
             }
 
             // 2. Apply dynamic role filtering if userId & role are provided
@@ -162,6 +167,9 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
 
             // Execute query
             const { data, error: queryError } = await query.order("created_at", { ascending: false });
+
+            console.log("[useGetPetition] Query params -> userId:", userId, "asignacion:", asignacion);
+            console.log("[useGetPetition] Supabase Response Data Length:", data?.length, "Error:", queryError);
 
             if (queryError) {
                 throw new Error(queryError.message);
@@ -181,6 +189,20 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
                             const lastName = u.apellido || "";
                             userName = `${firstName} ${lastName}`.trim() || "Usuario";
                             userPhoto = u.foto_url || null;
+                        }
+                    }
+
+                    // Concatenate names for conductor
+                    let conductorName = "";
+                    let conductorPhoto: string | null = null;
+
+                    if (item.conductor) {
+                        const c = Array.isArray(item.conductor) ? item.conductor[0] : item.conductor;
+                        if (c) {
+                            const firstName = c.primer_nombre || "";
+                            const lastName = c.apellido || "";
+                            conductorName = `${firstName} ${lastName}`.trim() || "Conductor";
+                            conductorPhoto = c.foto_url || null;
                         }
                     }
 
@@ -206,8 +228,8 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
 
                     return {
                         id: item.id?.toString() || "",
-                        passenger_id: (item.passenger_id || item.ci_pasajero || "").toString(),
-                        driver_id: (item.driver_id || item.ci_conductor || null)?.toString() ?? null,
+                        pasajero_id: (item.ci_pasajero || "").toString(),
+                        driver_id: (item.ci_driver || null)?.toString() ?? null,
                         origen: locName,
                         destino: item.destino || "",
                         acompañantes: Number(item.acompañantes || item.pasajeros || 1),
@@ -216,7 +238,7 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
                         estado: item.estado || "Pendiente",
                         created_at: item.created_at || new Date().toISOString(),
                         usuario: userName ? { nombre: userName, foto_url: userPhoto } : null,
-                        localizacion: locName ? { nombre: locName } : null,
+                        conductor: conductorName ? { nombre: conductorName, foto_url: conductorPhoto } : null,
                         vehiculo: vehicleModel ? { foto_url: vehiclePhoto, modelo: vehicleModel } : null,
                     };
                 });
@@ -231,12 +253,12 @@ export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetit
         } finally {
             setIsLoading(false);
         }
-    }, [userId, role, includePorAsignacion]);
+    }, [userId, role, asignacion]);
 
     // Fetch data on mount and whenever options change
     useEffect(() => {
         fetchPetitions();
-    }, [userId, role, includePorAsignacion]);
+    }, [userId, role, asignacion]);
 
     return {
         petitions,
