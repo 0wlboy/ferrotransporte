@@ -25,7 +25,7 @@ export default function RecordScreen() {
   const { petitions, isLoading, error, refetch } = useGetPetition({
     userId: user?.ci_user || user?.id,
     role: user?.role,
-    excludePorAsignacion: true, // Excludes petitions with status 'por asignacion'
+    asignacion: "Completado",
   });
 
   // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
@@ -155,11 +155,16 @@ export default function RecordScreen() {
                 hour12: true,
               });
 
+              const isConductor = user?.role?.toLowerCase() === "conductor";
               // Map PetitionData to expected TripRecord shape for PetitionCardSmall
               const tripData = {
                 id: item.id,
-                conductorNombre: item.usuario?.nombre || "Por Asignar",
-                conductorFoto: item.usuario?.foto_url || undefined,
+                conductorNombre: isConductor
+                  ? (item.usuario?.nombre || "Pasajero")
+                  : (item.conductor?.nombre || "Por Asignar"),
+                conductorFoto: isConductor
+                  ? (item.usuario?.foto_url || undefined)
+                  : (item.conductor?.foto_url || undefined),
                 origen: item.origen,
                 destino: item.destino,
                 fecha: formattedDate,
@@ -177,9 +182,9 @@ export default function RecordScreen() {
                   size={64}
                   color="#B0B0B0"
                 />
-                <Text style={styles.emptyText}>No tienes viajes registrados</Text>
+                <Text style={styles.emptyText}>No tienes viajes completados</Text>
                 <Text style={styles.emptySubText}>
-                  Las peticiones de transporte que realices o tengas asignadas aparecerán aquí.
+                  Las peticiones de transporte completadas aparecerán aquí.
                 </Text>
               </View>
             }

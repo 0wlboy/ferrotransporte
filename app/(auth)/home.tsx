@@ -1,4 +1,4 @@
-import { PetitionCardSmall, TripRecord } from "@/components/ui/petition-card";
+import { PetitionCardSmall, TripRecord, TripStatus } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
@@ -102,9 +102,10 @@ export default function Home() {
   );
 
   // Mostrar solo los 2 más recientes en el resumen
-  const recentTrips = useGetPetition({
+  const { petitions: recentTrips = [] } = useGetPetition({
     userId: user?.ci_user,
     role: user?.role,
+    asignacion: "Completado",
   });
 
   return (
@@ -176,9 +177,38 @@ export default function Home() {
         {/* ── HISTORIAL DE VIAJES ── */}
         <Text style={styles.sectionTitle}>HISTORIAL DE VIAJES</Text>
 
-        {recentTrips.map((trip) => (
-          <PetitionCardSmall key={trip.id} data={trip} />
-        ))}
+        {(recentTrips || []).slice(0, 2).map((item) => {
+          const dateObj = new Date(item.created_at);
+          const formattedDate = dateObj.toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+          const formattedTime = dateObj.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          });
+
+          const isConductor = user?.role?.toLowerCase() === "conductor";
+          const tripData: TripRecord = {
+            id: item.id,
+            conductorNombre: isConductor
+              ? (item.usuario?.nombre || "Pasajero")
+              : (item.conductor?.nombre || "Por Asignar"),
+            conductorFoto: isConductor
+              ? (item.usuario?.foto_url || undefined)
+              : (item.conductor?.foto_url || undefined),
+            origen: item.origen,
+            destino: item.destino,
+            fecha: formattedDate,
+            hora: formattedTime,
+            estado: item.estado as TripStatus,
+            motivo: item.carga || undefined,
+          };
+
+          return <PetitionCardSmall key={item.id} data={tripData} />;
+        })}
 
         {/* ── VER MÁS ── */}
         <TouchableOpacity

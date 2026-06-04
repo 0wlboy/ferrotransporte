@@ -5,265 +5,186 @@ import { useCallback, useEffect, useState } from "react";
 // TYPES & INTERFACES
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Standardized data structure returned by the hook for each petition entry.
- */
+/** Datos que el hook retorna para cada petición. */
 export interface PetitionData {
-    /** Unique ID of the petition. */
-    id: string;
-    /** Passenger / Requester ID (e.g. CI or UUID). */
-    pasajero_id: string;
-    /** Assigned driver / conductor ID (if any). */
-    driver_id: string | null;
-    /** Origin location name or text. */
-    origen: string;
-    /** Destination location name or text. */
-    destino: string;
-    /** Number of passengers requested. */
-    acompañantes: number;
-    /** Priority level: "Mediana" | "Alta" | etc. */
-    prioridad: string;
-    /** Description of cargo or trip motivation (optional). */
-    carga?: string | null;
-    /** Status of the petition: "Pendiente" | "En Camino" | "Completado" | "Cancelado" | etc. */
-    estado: string;
-    /** ISO Date of creation. */
-    created_at: string;
-
-    /** Passenger user profile details (joined). */
-    usuario?: {
-        /** Combined first and last name. */
-        nombre: string;
-        /** Profile picture URL. */
-        foto_url: string | null;
-    } | null;
-
-    /** Driver user profile details (joined). */
-    conductor?: {
-        /** Combined first and last name. */
-        nombre: string;
-        /** Profile picture URL. */
-        foto_url: string | null;
-    } | null;
-
-    /** Location details (joined). */
-    localizacion?: {
-        /** Name of the location. */
-        nombre: string;
-    } | null;
-
-    /** Assigned vehicle details (joined, if any). */
-    vehiculo?: {
-        /** Vehicle image URL. */
-        foto_url: string | null;
-        /** Model name of the vehicle. */
-        modelo: string;
-    } | null;
+  id: string;
+  pasajero_id: string;
+  driver_id: string | null;
+  origen: string; // nombre de la localización origen
+  destino: string; // nombre de la localización destino
+  origen_id: string;
+  destino_id: string;
+  acompañantes: number;
+  prioridad: string;
+  carga: string | null;
+  estado: string;
+  created_at: string;
+  usuario: { nombre: string; foto_url: string | null } | null;
+  conductor: { nombre: string; foto_url: string | null } | null;
 }
 
-/**
- * Options for configuring the hook's filters and behavior.
- */
+/** Opciones de filtrado del hook. */
 export interface UseGetPetitionOptions {
-    /** User ID to filter by. Can be the logged-in user's ID or CI. */
-    userId?: string | null;
-    /** Role of the active user: "Pasajero" | "Conductor" (case-insensitive). */
-    role?: "Pasajero" | "Conductor" | string | null;
-    /** If true, filters out any petitions with state equal to 'por asignacion'. Default is true. */
-    asignacion?: "Pendiente" | "Completado" | "Cancelado" | "En Camino" | string | null;
+  userId?: string | null;
+  role?: "Pasajero" | "Conductor" | string | null;
+  asignacion?:
+    | "Pendiente"
+    | "Completado"
+    | "Cancelado"
+    | "En Camino"
+    | string
+    | null;
 }
 
-/**
- * Return type of the `useGetPetition` hook.
- */
+/** Valor de retorno del hook. */
 export interface UseGetPetitionReturn {
-    /** Array of enriched petition entries. */
-    petitions: PetitionData[];
-    /** Flag indicating if the database operation is currently active. */
-    isLoading: boolean;
-    /** Error message if query fails, or null if successful. */
-    error: string | null;
-    /** Trigger a manual reload of the data. */
-    refetch: () => Promise<void>;
+  petitions: PetitionData[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCHEMA CONFIGURATIONS
+// HOOK
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface SchemaConfig {
-    select: string;
-    passengerCol: string;
-    driverCol: string;
-}
+export function useGetPetition(
+  options: UseGetPetitionOptions = {},
+): UseGetPetitionReturn {
+  const { userId = null, role = null, asignacion = null } = options;
 
+  const [petitions, setPetitions] = useState<PetitionData[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-// schema
+  const fetchPetitions = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-const SCHEMA: SchemaConfig = {
-    select: `
-    *,
-    usuario:usuarios!ci_pasajero (
-      primer_nombre,
-      apellido,
-      foto_url
-    ),
-    conductor:usuarios!ci_driver (
-      primer_nombre,
-      apellido,
-      foto_url
-    )
-  `,
-    passengerCol: "ci_pasajero",
-    driverCol: "ci_driver",
+    try {
+      // ── PASO 1: Obtener todas las peticiones ─────────────────────────────────
+      let query = supabase.from("peticiones").select("*");
 
-};
+      if (asignacion) {
+        query = query.eq("estado", asignacion);
+      }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HOOK IMPLEMENTATION
-// ─────────────────────────────────────────────────────────────────────────────
+      if (userId && role) {
+        const filterCol =
+          role.toLowerCase() === "conductor" ? "ci_driver" : "ci_pasajero";
+        query = query.eq(filterCol, userId);
+      }
 
-/**
- * `useGetPetition` — Custom Hook to fetch transportation petitions with joins and filters.
- *
- * Joins tables:
- * - `usuarios` (to retrieve first name, last name, and profile photo)
- * - `localizaciones` (to retrieve the location's name)
- * - `vehiculos` (to retrieve vehicle model and image)
- *
- * Supports:
- * - Loading and error status management.
- * - Dynamic filtering by Passenger or Driver based on user's role.
- * - Exclusion of petitions with state "por asignacion".
- * - Manual `refetch` for pull-to-refresh implementations.
- *
- * @param options - Configuration options for filtering and behavior.
- */
-export function useGetPetition(options: UseGetPetitionOptions = {}): UseGetPetitionReturn {
-    const { userId = null, role = null, asignacion = null } = options;
+      const { data: peticionesData, error: peticionesError } =
+        await query.order("created_at", {
+          ascending: false,
+        });
 
-    const [petitions, setPetitions] = useState<PetitionData[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+      if (peticionesError) throw new Error(peticionesError.message);
+      if (!peticionesData || peticionesData.length === 0) {
+        setPetitions([]);
+        return;
+      }
 
-    const fetchPetitions = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
+      console.log(
+        "[useGetPetition] Peticiones obtenidas:",
+        peticionesData.length,
+      );
 
-        try {
-            let query = supabase.from("peticiones").select(SCHEMA.select);
+      // ── PASOS 2, 3 y 4: Por cada petición buscar usuarios y localizaciones ───
+      const formattedData: PetitionData[] = await Promise.all(
+        peticionesData.map(async (peticion: any) => {
+          // Buscar datos del pasajero por ci_user
+          const { data: pasajeroData } = await supabase
+            .from("usuarios")
+            .select("primer_nombre, apellido, foto_url")
+            .eq("ci_user", peticion.ci_pasajero)
+            .maybeSingle();
 
-            // 1. Exclude status 'por asignacion' if requested
-            if (asignacion) {
-                query = query.eq("estado", asignacion);
+          const usuarioNombre = pasajeroData
+            ? `${pasajeroData.primer_nombre ?? ""} ${pasajeroData.apellido ?? ""}`.trim()
+            : "Usuario";
+          const usuarioFoto = pasajeroData?.foto_url ?? null;
+
+          // Buscar datos del conductor por ci_user (opcional)
+          let conductorNombre = "";
+          let conductorFoto: string | null = null;
+          if (peticion.ci_driver) {
+            const { data: conductorData } = await supabase
+              .from("usuarios")
+              .select("primer_nombre, apellido, foto_url")
+              .eq("ci_user", peticion.ci_driver)
+              .maybeSingle();
+
+            if (conductorData) {
+              conductorNombre = conductorData
+                ? `${conductorData.primer_nombre ?? ""} ${conductorData.apellido ?? ""}`.trim()
+                : "Por asignar";
+              conductorFoto = conductorData.foto_url ?? null;
             }
+          }
 
-            // 2. Apply dynamic role filtering if userId & role are provided
-            if (userId && role) {
-                const isConductor = role.toLowerCase() === "conductor";
-                const filterCol = isConductor ? SCHEMA.driverCol : SCHEMA.passengerCol;
-                query = query.eq(filterCol, userId);
-            }
+          // Buscar nombre del origen en localizaciones
+          const { data: origenData } = await supabase
+            .from("localizaciones")
+            .select("nombre")
+            .eq("id", peticion.origen_id)
+            .maybeSingle();
 
-            // Execute query
-            const { data, error: queryError } = await query.order("created_at", { ascending: false });
+          const origenNombre: string =
+            origenData?.nombre ?? String(peticion.origen_id);
 
-            console.log("[useGetPetition] Query params -> userId:", userId, "asignacion:", asignacion);
-            console.log("[useGetPetition] Supabase Response Data Length:", data?.length, "Error:", queryError);
+          // Buscar nombre del destino en localizaciones
+          const { data: destinoData } = await supabase
+            .from("localizaciones")
+            .select("nombre")
+            .eq("id", peticion.destino_id)
+            .maybeSingle();
 
-            if (queryError) {
-                throw new Error(queryError.message);
-            }
+          const destinoNombre: string =
+            destinoData?.nombre ?? String(peticion.destino_id);
 
-            if (data) {
-                // Map and standardize data
-                const formattedData: PetitionData[] = data.map((item: any) => {
-                    // Concatenate names for user
-                    let userName = "";
-                    let userPhoto: string | null = null;
+          console.log(
+            `[useGetPetition] Petición ${peticion.id}: usuario="${usuarioNombre}" origen="${origenNombre}" destino="${destinoNombre}"`,
+          );
 
-                    if (item.usuario) {
-                        const u = Array.isArray(item.usuario) ? item.usuario[0] : item.usuario;
-                        if (u) {
-                            const firstName = u.primer_nombre || "";
-                            const lastName = u.apellido || "";
-                            userName = `${firstName} ${lastName}`.trim() || "Usuario";
-                            userPhoto = u.foto_url || null;
-                        }
-                    }
+          return {
+            id: String(peticion.id ?? ""),
+            pasajero_id: String(peticion.ci_pasajero ?? ""),
+            driver_id: peticion.ci_driver ? String(peticion.ci_driver) : null,
+            origen: origenNombre,
+            destino: destinoNombre,
+            origen_id: String(peticion.origen_id ?? ""),
+            destino_id: String(peticion.destino_id ?? ""),
+            acompañantes: Number(
+              peticion.acompañantes ?? peticion.pasajeros ?? 1,
+            ),
+            prioridad: peticion.prioridad ?? "Mediana",
+            carga: peticion.carga ?? null,
+            estado: peticion.estado ?? "Pendiente",
+            created_at: peticion.created_at ?? new Date().toISOString(),
+            usuario: { nombre: usuarioNombre, foto_url: usuarioFoto },
+            conductor: conductorNombre
+              ? { nombre: conductorNombre, foto_url: conductorFoto }
+              : null,
+          };
+        }),
+      );
 
-                    // Concatenate names for conductor
-                    let conductorName = "";
-                    let conductorPhoto: string | null = null;
+      setPetitions(formattedData);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Excepción desconocida.";
+      console.error("[useGetPetition] Error:", err);
+      setError(`No se pudieron cargar las peticiones: ${msg}`);
+      setPetitions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, role, asignacion]);
 
-                    if (item.conductor) {
-                        const c = Array.isArray(item.conductor) ? item.conductor[0] : item.conductor;
-                        if (c) {
-                            const firstName = c.primer_nombre || "";
-                            const lastName = c.apellido || "";
-                            conductorName = `${firstName} ${lastName}`.trim() || "Conductor";
-                            conductorPhoto = c.foto_url || null;
-                        }
-                    }
+  useEffect(() => {
+    fetchPetitions();
+  }, [userId, role, asignacion]);
 
-                    // Extract location name
-                    let locName = item.origen || ""; // fallback to raw origin column
-                    if (item.localizacion) {
-                        const l = Array.isArray(item.localizacion) ? item.localizacion[0] : item.localizacion;
-                        if (l?.nombre) {
-                            locName = l.nombre;
-                        }
-                    }
-
-                    // Extract vehicle details
-                    let vehiclePhoto: string | null = null;
-                    let vehicleModel = "";
-                    if (item.vehiculo) {
-                        const v = Array.isArray(item.vehiculo) ? item.vehiculo[0] : item.vehiculo;
-                        if (v) {
-                            vehiclePhoto = v.foto_url || v.imagen_url || null;
-                            vehicleModel = v.modelo || "";
-                        }
-                    }
-
-                    return {
-                        id: item.id?.toString() || "",
-                        pasajero_id: (item.ci_pasajero || "").toString(),
-                        driver_id: (item.ci_driver || null)?.toString() ?? null,
-                        origen: locName,
-                        destino: item.destino || "",
-                        acompañantes: Number(item.acompañantes || item.pasajeros || 1),
-                        prioridad: item.prioridad || "Mediana",
-                        carga: item.carga || null,
-                        estado: item.estado || "Pendiente",
-                        created_at: item.created_at || new Date().toISOString(),
-                        usuario: userName ? { nombre: userName, foto_url: userPhoto } : null,
-                        conductor: conductorName ? { nombre: conductorName, foto_url: conductorPhoto } : null,
-                        vehiculo: vehicleModel ? { foto_url: vehiclePhoto, modelo: vehicleModel } : null,
-                    };
-                });
-
-                setPetitions(formattedData);
-            }
-        } catch (err) {
-            const lastErrorMessage = err instanceof Error ? err.message : "Excepción desconocida.";
-            console.error("[useGetPetition] Error executing query:", err);
-            setError(`No se pudieron cargar las peticiones: ${lastErrorMessage}`);
-            setPetitions([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [userId, role, asignacion]);
-
-    // Fetch data on mount and whenever options change
-    useEffect(() => {
-        fetchPetitions();
-    }, [userId, role, asignacion]);
-
-    return {
-        petitions,
-        isLoading,
-        error,
-        refetch: fetchPetitions,
-    };
+  return { petitions, isLoading, error, refetch: fetchPetitions };
 }
