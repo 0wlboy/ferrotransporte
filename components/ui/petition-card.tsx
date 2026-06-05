@@ -5,35 +5,33 @@ import { Image, StyleSheet, Text, View } from "react-native";
 
 export interface TripRecord {
   id: string;
-  conductorNombre: string;
-  conductorFoto?: string;
+  userNombre: string;
+  userFoto?: string;
   origen: string;
+  acompañantes?: number;
+  carga?: string;
   destino: string;
   fecha: string;
   hora: string;
-  estado: TripStatus;
+  prioridad: TripPriority;
   motivo?: string;
 }
 
-export type TripStatus = "Completado" | "Cancelado" | "En Camino" | "Pendiente";
+export type TripPriority = "Media" | "Alta";
 
-function getStatusColor(estado: TripStatus): string {
+function getPrioridadColor(estado: TripPriority): string {
   switch (estado) {
-    case "Completado":
+    case "Media":
       return "#2E7D32";
-    case "Cancelado":
+    case "Alta":
       return "#C62828";
-    case "En Camino":
-      return "#1565C0";
-    case "Pendiente":
-      return "#E65100";
     default:
       return "#757575";
   }
 }
 
-export function PetitionCardSmall({ data }: { data: TripRecord }) {
-  const statusColor = getStatusColor(data.estado);
+export function PetitionCardSmall({ data, viewerRole }: { data: TripRecord, viewerRole: "Conductor" | "Pasajero" }) {
+  const prioridadColor = getPrioridadColor(data.prioridad);
   return (
     <>
       <View style={styles.tripCard}>
@@ -41,9 +39,9 @@ export function PetitionCardSmall({ data }: { data: TripRecord }) {
         <View style={styles.tripCardTop}>
           {/* Avatar del conductor */}
           <View style={styles.avatarContainer}>
-            {data.conductorFoto ? (
+            {data.userFoto ? (
               <Image
-                source={{ uri: data.conductorFoto }}
+                source={{ uri: data.userFoto }}
                 style={styles.avatar}
               />
             ) : (
@@ -53,11 +51,34 @@ export function PetitionCardSmall({ data }: { data: TripRecord }) {
             )}
           </View>
 
-          {/* Nombre del conductor */}
-          <View style={styles.tripConductorInfo}>
-            <Text style={styles.tripConductorLabel}>Conductor</Text>
-            <Text style={styles.tripConductorName}>{data.conductorNombre}</Text>
+          <View style={styles.tripUserInfo}>
+            {viewerRole === "Conductor" && (
+              <View>
+                <Text style={styles.tripUserLabel}>Pasajero</Text>
+                <Text style={styles.tripUserName}>{data.userNombre}</Text>
+              </View>
+            )}
+
+            {viewerRole === "Pasajero" && (
+              <View>
+                <Text style={styles.tripUserLabel}>Conductor</Text>
+                <Text style={styles.tripUserName}>{data.userNombre}</Text>
+              </View>
+            )}
+
+            <View style={styles.tripPetitionInfoContainer}>
+              <View style={styles.tripInfoRow}>
+                <Text style={styles.tripInfoLabel}>Acompañantes: </Text>
+                <Text style={styles.tripInfoData}>{data.acompañantes}</Text>
+              </View>
+              <View style={styles.tripInfoRow}>
+                <Text style={styles.tripInfoLabel}>Carga: </Text>
+                <Text style={styles.tripInfoData}>{data.carga}</Text>
+              </View>
+            </View>
           </View>
+
+
 
           {/* Origen → Destino */}
           <View style={styles.tripRoute}>
@@ -78,29 +99,35 @@ export function PetitionCardSmall({ data }: { data: TripRecord }) {
               <Text style={styles.tripRouteValue}>{data.destino}</Text>
             </View>
           </View>
-        </View>
+        </View >
 
         {/* Separador */}
-        <View style={styles.tripDivider} />
+        < View style={styles.tripDivider} />
 
-        {/* Fila inferior: fecha + estado */}
-        <View style={styles.tripCardBottom}>
+        {/* Fila inferior: fecha + prioridad */}
+        < View style={styles.tripCardBottom} >
+          <Text style={styles.tripDateLabel}>Fecha: </Text>
           <Text style={styles.tripDateText}>
-            Fecha: {data.fecha}
+            {data.fecha}
             {"  "}
             {data.hora}
           </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusBadgeText}>{data.estado}</Text>
+          <View style={styles.priorityContainer} >
+            <Text style={styles.tripPriorityLabel}>
+              Prioridad:
+            </Text>
           </View>
-        </View>
-      </View>
+          <View style={[styles.statusBadge, { backgroundColor: prioridadColor }]}>
+            <Text style={styles.statusBadgeText}>{data.prioridad}</Text>
+          </View>
+        </View >
+      </View >
     </>
   );
 }
 
 interface PetitionCardBigProps {
-  data: TripRecord;
+  data: TripPriority;
   onAccept?: () => void;
   onCancel?: () => void;
 }
@@ -140,18 +167,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tripConductorInfo: {
+  tripUserInfo: {
     flex: 1,
   },
-  tripConductorLabel: {
-    fontSize: 11,
+  tripUserLabel: {
+    fontSize: 10,
     color: "#888",
     marginBottom: 2,
   },
-  tripConductorName: {
-    fontSize: 15,
+  tripUserName: {
+    fontSize: 12,
     fontWeight: "700",
     color: "#1A1A1A",
+  },
+  tripPetitionInfoContainer: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 2,
+    marginTop: 4,
+  },
+  tripInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  tripInfoLabel: {
+    fontSize: 11,
+    color: "#888",
+  },
+  tripInfoData: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.light.tint,
   },
   tripRoute: {
     alignItems: "flex-end",
@@ -162,7 +208,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tripRouteLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#888",
   },
   tripRouteValue: {
@@ -191,9 +237,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  tripDateLabel: {
+    fontSize: 10,
+    color: "#888",
+  },
   tripDateText: {
     fontSize: 12,
     color: "#555",
+  },
+  priorityContainer: {
+    flexDirection: "row",
+    gap: 1,
+  },
+  tripPriorityLabel: {
+    fontSize: 10,
+    color: "#888",
+    fontWeight: "400",
   },
   statusBadge: {
     borderRadius: 20,

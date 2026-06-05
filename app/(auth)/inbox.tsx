@@ -1,16 +1,16 @@
 import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
-import { PetitionCardSmall, TripStatus } from "@/components/ui/petition-card";
+import { PetitionCardSmall, TripPriority } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
     ActivityIndicator,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
@@ -59,7 +59,7 @@ export default function Inbox() {
     }, [petitions, sortField, sortDirection]);
 
     return (
-        <SafeAreaView style={styles.screen}>
+        <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
             <StatusBar barStyle="light-content" backgroundColor={Colors.light.tint} />
 
             {/* ── HEADER ── */}
@@ -84,7 +84,7 @@ export default function Inbox() {
             </View>
 
             {/* ── MAIN CONTENT CONTAINER ── */}
-            <View style={styles.contentContainer}>
+            <SafeAreaView style={styles.contentContainer} edges={["bottom", "left", "right"]}>
 
                 {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
                 <View style={styles.actionsBar}>
@@ -157,17 +157,19 @@ export default function Inbox() {
                             // Map PetitionData to expected TripRecord shape for PetitionCardSmall
                             const tripData = {
                                 id: item.id,
-                                conductorNombre: item.usuario?.nombre || "Por Asignar",
-                                conductorFoto: item.usuario?.foto_url || undefined,
+                                userNombre: item.usuario?.nombre || "Por Asignar",
+                                userFoto: item.usuario?.foto_url || undefined,
                                 origen: item.origen,
                                 destino: item.destino,
+                                acompañantes: item.acompañantes || 0,
+                                carga: item.carga || "Sin carga",
                                 fecha: formattedDate,
                                 hora: formattedTime,
-                                estado: item.estado as TripStatus,
+                                prioridad: item.prioridad as TripPriority,
                                 motivo: item.carga || undefined,
                             };
 
-                            return <PetitionCardSmall data={tripData} />;
+                            return <PetitionCardSmall data={tripData} viewerRole={user?.role === "Conductor" ? "Conductor" : "Pasajero"} />;
                         }}
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
@@ -184,7 +186,7 @@ export default function Inbox() {
                         }
                     />
                 )}
-            </View>
+            </SafeAreaView>
 
             {/* ── SORTING CONFIGURATION MODAL ── */}
             <OrdenModal

@@ -150,7 +150,7 @@ export default function EditCar() {
 
     if (isInitializing) {
         return (
-            <SafeAreaView style={styles.safeContainer}>
+            <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
                 <StatusBar style="light" backgroundColor="#A10F2D" />
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#FFFFFF" />
@@ -166,7 +166,7 @@ export default function EditCar() {
 
     if (!car) {
         return (
-            <SafeAreaView style={styles.safeContainer}>
+            <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
                 <StatusBar style="light" backgroundColor="#A10F2D" />
                 <View style={styles.loadingContainer}>
                     <TouchableOpacity
@@ -191,7 +191,7 @@ export default function EditCar() {
     // ───────────────────────────────────────────────────────────────────────
 
     return (
-        <SafeAreaView style={styles.safeContainer}>
+        <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
             <StatusBar style="light" backgroundColor="#A10F2D" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}

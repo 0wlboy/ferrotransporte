@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { PetitionCardSmall, TripRecord, TripStatus } from "@/components/ui/petition-card";
+=======
+import { PetitionCardSmall, TripPriority, TripRecord } from "@/components/ui/petition-card";
+>>>>>>> 49cbbdb (modificacion de petition-card y useGetPetition para desplegar informacion oportuna para el usuario dependiendo de su rol. Tambien modificaciones esteticas que hacen la apariencia mas consistente en la aplicacion)
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
@@ -22,30 +26,30 @@ import {
 const PLACEHOLDER_TRIPS: TripRecord[] = [
   {
     id: "1",
-    conductorNombre: "Carlos Javier",
+    userNombre: "Carlos Javier",
     origen: "Calidad",
     destino: "Gerencia",
     fecha: "12/01/2026",
     hora: "1:00 pm",
-    estado: "Completado",
+    prioridad: "Media",
   },
   {
     id: "2",
-    conductorNombre: "Carlos Javier",
+    userNombre: "Carlos Javier",
     origen: "Calidad",
     destino: "Gerencia",
     fecha: "12/01/2026",
     hora: "1:00 pm",
-    estado: "Cancelado",
+    prioridad: "Alta",
   },
   {
     id: "3",
-    conductorNombre: "María González",
+    userNombre: "María González",
     origen: "Administración",
     destino: "Taller",
     fecha: "10/01/2026",
     hora: "9:30 am",
-    estado: "Completado",
+    prioridad: "Media",
   },
 ];
 
@@ -193,21 +197,23 @@ export default function Home() {
           const isConductor = user?.role?.toLowerCase() === "conductor";
           const tripData: TripRecord = {
             id: item.id,
-            conductorNombre: isConductor
+            userNombre: isConductor
               ? (item.usuario?.nombre || "Pasajero")
               : (item.conductor?.nombre || "Por Asignar"),
-            conductorFoto: isConductor
+            userFoto: isConductor
               ? (item.usuario?.foto_url || undefined)
               : (item.conductor?.foto_url || undefined),
             origen: item.origen,
             destino: item.destino,
+            acompañantes: item.acompañantes || 0,
+            carga: item.carga || "Sin carga",
             fecha: formattedDate,
             hora: formattedTime,
-            estado: item.estado as TripStatus,
+            prioridad: item.prioridad as TripPriority,
             motivo: item.carga || undefined,
           };
 
-          return <PetitionCardSmall key={item.id} data={tripData} />;
+          return <PetitionCardSmall key={item.id} data={tripData} viewerRole={user?.role as "Conductor" | "Pasajero"} />;
         })}
 
         {/* ── VER MÁS ── */}
