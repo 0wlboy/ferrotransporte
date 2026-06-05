@@ -5,36 +5,29 @@ import { useAuth } from "@/context/auth-context";
 import { useSendPetition } from "@/hooks/useSendPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { LocationData, useGetLocations } from "@/hooks/useGetLocations";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATOS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Destinos = [
-  "Gerencias",
-  "Operaciones",
-  "Mantenimiento",
-  "Recursos Humanos",
-  "Logística",
-  "Administración",
-  "Seguridad",
-  "Tecnología",
-];
+
 
 const OpcionesPrioridad = ["Mediana", "Alta"];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTE DROPDOWN LOCAL
+// COMPONENTES DROPDOWN LOCALES
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface DropdownProps {
@@ -97,6 +90,69 @@ function Dropdown({
   );
 }
 
+interface LocationDropdownProps {
+  label: string;
+  selected: string; // holds the selected uuid
+  options: LocationData[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (value: string) => void; // returns the selected uuid
+  zIndex?: number;
+}
+
+function LocationDropdown({
+  label,
+  selected,
+  options,
+  isOpen,
+  onToggle,
+  onSelect,
+  zIndex = 10,
+}: LocationDropdownProps) {
+  const selectedOption = options.find((item) => item.id === selected);
+  const displayLabel = selectedOption ? selectedOption.nombre : "Seleccionar...";
+
+  return (
+    <View style={[styles.dropdownWrapper, { zIndex }]}>
+      <Text style={styles.fieldLabel}>
+        {label} <Text style={styles.required}>*</Text>
+      </Text>
+      <TouchableOpacity
+        style={[styles.dropdownButton, isOpen && styles.dropdownButtonOpen]}
+        onPress={onToggle}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.dropdownSelected}>{displayLabel}</Text>
+        <MaterialCommunityIcons name="chevron-down" size={22} color="#A10F2D" />
+      </TouchableOpacity>
+
+      {isOpen && (
+        <View style={styles.dropdownList}>
+          {options.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.dropdownItem,
+                item.id === selected && styles.dropdownItemActive,
+              ]}
+              onPress={() => onSelect(item.id)}
+            >
+              <Text
+                style={[
+                  styles.dropdownItemText,
+                  item.id === selected && styles.dropdownItemTextActive,
+                ]}
+              >
+                {item.nombre}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PANTALLA PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,10 +161,12 @@ export default function Petition() {
   const { sendPetition, isLoading } = useSendPetition();
   const { user } = useAuth();
 
-  const [origen, setOrigen] = useState(Destinos[0]);
-  const [destino, setDestino] = useState(Destinos[0]);
+  const { locations, isLoading: isLoadingLocations } = useGetLocations();
+
+  const [origen, setOrigen] = useState("");
+  const [destino, setDestino] = useState("");
   const [pasajeros, setPasajeros] = useState("1");
-  const [prioridad, setPrioridad] = useState(OpcionesPrioridad[0]);
+  const [prioridad, setPrioridad] = useState("Mediana");
   const [carga, setCarga] = useState("");
   const [descripcion, setDescripcion] = useState("");
 
@@ -117,6 +175,13 @@ export default function Petition() {
   const [showOrigen, setShowOrigen] = useState(false);
   const [showDestino, setShowDestino] = useState(false);
   const [showPrioridad, setShowPrioridad] = useState(false);
+
+  useEffect(() => {
+    if (locations && locations.length > 0) {
+      if (!origen) setOrigen(locations[0].id);
+      if (!destino) setDestino(locations[0].id);
+    }
+  }, [locations]);
 
   // Cierra todos los dropdowns antes de abrir uno nuevo
   const openOrigen = () => {
@@ -170,20 +235,9 @@ export default function Petition() {
     }
   };
 
-  const original = useMemo(
-    () => ({
-      origen: origen,
-      destino: destino,
-    }),
-    [],
-  );
-
   const hasChanges = useMemo(() => {
-    return (
-      origen.trim() !== original.origen.trim() &&
-      destino.trim() !== original.destino.trim()
-    );
-  }, [origen, destino, original]);
+    return origen.trim() !== "" && destino.trim() !== "";
+  }, [origen, destino]);
 
   return (
     <View style={styles.container}>
@@ -212,40 +266,47 @@ export default function Petition() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Origen */}
-        <Dropdown
-          label="Origen"
-          selected={origen}
-          options={Destinos}
-          isOpen={showOrigen}
-          onToggle={openOrigen}
-          onSelect={(v) => {
-            setOrigen(v);
-            setShowOrigen(false);
-          }}
-          zIndex={30}
-        />
+        {isLoadingLocations ? (
+          <View style={{ paddingVertical: 40, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator size="large" color="#A10F2D" />
+            <Text style={{ marginTop: 12, color: "#666", fontSize: 14 }}>Cargando localizaciones...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Origen */}
+            <LocationDropdown
+              label="Origen"
+              selected={origen}
+              options={locations}
+              isOpen={showOrigen}
+              onToggle={openOrigen}
+              onSelect={(v) => {
+                setOrigen(v);
+                setShowOrigen(false);
+              }}
+              zIndex={30}
+            />
 
-        {/* Separador con flecha */}
-        <View style={styles.arrowSeparator}>
-          <View style={styles.arrowDot} />
-          <View style={styles.arrowDot} />
-          <MaterialCommunityIcons name="arrow-down" size={18} color="#A10F2D" />
-        </View>
+            {/* Separador con flecha */}
+            <View style={styles.arrowSeparator}>
+              <View style={styles.arrowDot} />
+              <View style={styles.arrowDot} />
+              <MaterialCommunityIcons name="arrow-down" size={18} color="#A10F2D" />
+            </View>
 
-        {/* Destino */}
-        <Dropdown
-          label="Destino"
-          selected={destino}
-          options={Destinos}
-          isOpen={showDestino}
-          onToggle={openDestino}
-          onSelect={(v) => {
-            setDestino(v);
-            setShowDestino(false);
-          }}
-          zIndex={20}
-        />
+            {/* Destino */}
+            <LocationDropdown
+              label="Destino"
+              selected={destino}
+              options={locations}
+              isOpen={showDestino}
+              onToggle={openDestino}
+              onSelect={(v) => {
+                setDestino(v);
+                setShowDestino(false);
+              }}
+              zIndex={20}
+            />
 
         {/* Fila: Pasajeros | Prioridad */}
         <View style={styles.row}>
@@ -307,6 +368,8 @@ export default function Petition() {
           disabled={!hasChanges || isLoading}
           containerStyle={styles.submitButton}
         />
+          </>
+        )}
       </ScrollView>
     </View>
   );

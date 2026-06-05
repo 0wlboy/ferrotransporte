@@ -1,31 +1,34 @@
 import ExitModal from "@/components/modals/exit-modal";
 import { useAuth } from "@/context/auth-context";
+import { useCars } from "@/context/car-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function Profile() {
   const { user, signOut, isLoading } = useAuth();
+  const { car } = useCars();
+  const carFotoUrl = car?.foto_url || null;
 
   // Estado de visibilidad del modal de confirmación de cierre de sesión
   const [showExitModal, setShowExitModal] = useState(false);
 
   // Mapear campos con fallbacks por si acaso el usuario no tiene los datos cargados aún
-  const primer_nombre = user?.primer_nombre || "Carlos";
-  const apellido = user?.apellido || "Narvaez";
-  const telefono = user?.telf || "+58 4129807";
-  const ci = user?.ci_user || "V-20203456";
-  const gerencia = user?.gerencia || "Gerencias";
-  const email = user?.email || "carlos@javier123.com";
+  const primer_nombre = user?.primer_nombre || "Nombre";
+  const apellido = user?.apellido || "Apellido";
+  const telefono = user?.telf || "Telefono";
+  const ci = user?.ci_user || "CI";
+  const gerencia = user?.gerencia || "Gerencia";
+  const email = user?.email || "Email";
   const fotoUrl = user?.foto_url || null;
 
   /** Abre el modal de confirmación (no cierra sesión de inmediato) */
@@ -55,148 +58,171 @@ export default function Profile() {
 
       {/* ── ENCABEZADO CARMESÍ ── */}
       <View style={styles.header}>
-        {/* Botón de Atrás */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          style={styles.backButton}
-          accessibilityLabel="Volver"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#A10F2D" />
-        </TouchableOpacity>
+        <View style={styles.headerTopRow}>
+          {/* Botón de Atrás */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+            style={styles.backButton}
+            accessibilityLabel="Volver"
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#A10F2D" />
+          </TouchableOpacity>
+
+          {/* Botón de Vehículo */}
+          {user?.role === "Conductor" && (
+            <TouchableOpacity
+              style={styles.carButton}
+              onPress={() => router.push("/(auth)/edit-car" as any)}
+              activeOpacity={0.8}
+            >
+              {carFotoUrl ? (
+                <Image
+                  source={{ uri: carFotoUrl }}
+                  style={styles.carPhoto}
+                />
+              ) : (
+                <View style={styles.carPhotoPlaceholder}>
+                  <MaterialCommunityIcons name="car" size={20} color="#888" />
+                </View>
+              )}
+              <Text style={styles.carButtonText}>VEHÍCULO</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Título */}
         <Text style={styles.headerTitle}>Perfil de Usuario</Text>
       </View>
 
       {/* ── CUERPO CON TARJETA DESLIZABLE ── */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
+  <ScrollView
+    style={styles.scrollView}
+    contentContainerStyle={styles.scrollContent}
+    bounces={false}
+    showsVerticalScrollIndicator={false}
+  >
+    {/* Fila superior de la tarjeta: Botón Editar y Foto Centrada */}
+    <View style={styles.cardHeader}>
+      {/* Avatar de Perfil */}
+      <View style={styles.avatarContainer}>
+        {fotoUrl ? (
+          <Image
+            source={{ uri: fotoUrl }}
+            style={styles.avatarImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <MaterialCommunityIcons
+            name="account"
+            size={64}
+            color="#A10F2D"
+          />
+        )}
+      </View>
+
+      {/* Botón Editar Perfil (Esquina Superior Derecha de la tarjeta) */}
+      <TouchableOpacity
+        style={styles.editButton}
+        activeOpacity={0.85}
+        onPress={() => router.push("/edit-profile")}
+        accessibilityLabel="Editar Perfil"
+        accessibilityRole="button"
       >
-        {/* Fila superior de la tarjeta: Botón Editar y Foto Centrada */}
-        <View style={styles.cardHeader}>
-          {/* Avatar de Perfil */}
-          <View style={styles.avatarContainer}>
-            {fotoUrl ? (
-              <Image
-                source={{ uri: fotoUrl }}
-                style={styles.avatarImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <MaterialCommunityIcons
-                name="account"
-                size={64}
-                color="#A10F2D"
-              />
-            )}
-          </View>
-
-          {/* Botón Editar Perfil (Esquina Superior Derecha de la tarjeta) */}
-          <TouchableOpacity
-            style={styles.editButton}
-            activeOpacity={0.85}
-            onPress={() => router.push("/edit-profile")}
-            accessibilityLabel="Editar Perfil"
-            accessibilityRole="button"
-          >
-            <MaterialCommunityIcons
-              name="pencil-outline"
-              size={16}
-              color="#FFFFFF"
-            />
-            <Text style={styles.editButtonText}>Editar Perfil</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── CAMPOS DE DETALLE (NO INTERACTIVOS) ── */}
-
-        {/* Fila: Nombre | Apellido */}
-        <View style={styles.row}>
-          <View style={styles.halfField}>
-            <Text style={styles.fieldLabel}>Nombre</Text>
-            <View style={styles.readOnlyBox}>
-              <Text style={styles.readOnlyText} numberOfLines={1}>
-                {primer_nombre}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.halfField}>
-            <Text style={styles.fieldLabel}>Apellido</Text>
-            <View style={styles.readOnlyBox}>
-              <Text style={styles.readOnlyText} numberOfLines={1}>
-                {apellido}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Fila: Teléfono | CI */}
-        <View style={styles.row}>
-          <View style={styles.halfField}>
-            <Text style={styles.fieldLabel}>Telefono</Text>
-            <View style={styles.readOnlyBox}>
-              <Text style={styles.readOnlyText} numberOfLines={1}>
-                {telefono}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.halfField}>
-            <Text style={styles.fieldLabel}>CI</Text>
-            <View style={styles.readOnlyBox}>
-              <Text style={styles.readOnlyText} numberOfLines={1}>
-                {ci}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Gerencia o Departamento */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Gerencia o Departamento</Text>
-          <View style={styles.readOnlyBox}>
-            <Text style={styles.readOnlyText} numberOfLines={1}>
-              {gerencia}
-            </Text>
-          </View>
-        </View>
-
-        {/* Correo */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Correo</Text>
-          <View style={styles.readOnlyBox}>
-            <Text style={styles.readOnlyText} numberOfLines={1}>
-              {email}
-            </Text>
-          </View>
-        </View>
-
-        {/* ── BOTÓN CERRAR SESIÓN ── */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          activeOpacity={0.8}
-          onPress={handleLogoutPress}
-          accessibilityLabel="Cerrar Sesión"
-          accessibilityRole="button"
-        >
-          <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* ── MODAL DE CONFIRMACIÓN ── */}
-      <ExitModal
-        visible={showExitModal}
-        onCancel={handleLogoutCancel}
-        onConfirm={handleLogoutConfirm}
-        loading={isLoading}
-      />
+        <MaterialCommunityIcons
+          name="pencil-outline"
+          size={16}
+          color="#FFFFFF"
+        />
+        <Text style={styles.editButtonText}>Editar Perfil</Text>
+      </TouchableOpacity>
     </View>
+
+    {/* ── CAMPOS DE DETALLE (NO INTERACTIVOS) ── */}
+
+    {/* Fila: Nombre | Apellido */}
+    <View style={styles.row}>
+      <View style={styles.halfField}>
+        <Text style={styles.fieldLabel}>Nombre</Text>
+        <View style={styles.readOnlyBox}>
+          <Text style={styles.readOnlyText} numberOfLines={1}>
+            {primer_nombre}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.halfField}>
+        <Text style={styles.fieldLabel}>Apellido</Text>
+        <View style={styles.readOnlyBox}>
+          <Text style={styles.readOnlyText} numberOfLines={1}>
+            {apellido}
+          </Text>
+        </View>
+      </View>
+    </View>
+
+    {/* Fila: Teléfono | CI */}
+    <View style={styles.row}>
+      <View style={styles.halfField}>
+        <Text style={styles.fieldLabel}>Telefono</Text>
+        <View style={styles.readOnlyBox}>
+          <Text style={styles.readOnlyText} numberOfLines={1}>
+            {telefono}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.halfField}>
+        <Text style={styles.fieldLabel}>CI</Text>
+        <View style={styles.readOnlyBox}>
+          <Text style={styles.readOnlyText} numberOfLines={1}>
+            {ci}
+          </Text>
+        </View>
+      </View>
+    </View>
+
+    {/* Gerencia o Departamento */}
+    <View style={styles.fieldContainer}>
+      <Text style={styles.fieldLabel}>Gerencia o Departamento</Text>
+      <View style={styles.readOnlyBox}>
+        <Text style={styles.readOnlyText} numberOfLines={1}>
+          {gerencia}
+        </Text>
+      </View>
+    </View>
+
+    {/* Correo */}
+    <View style={styles.fieldContainer}>
+      <Text style={styles.fieldLabel}>Correo</Text>
+      <View style={styles.readOnlyBox}>
+        <Text style={styles.readOnlyText} numberOfLines={1}>
+          {email}
+        </Text>
+      </View>
+    </View>
+
+    {/* ── BOTÓN CERRAR SESIÓN ── */}
+    <TouchableOpacity
+      style={styles.logoutButton}
+      activeOpacity={0.8}
+      onPress={handleLogoutPress}
+      accessibilityLabel="Cerrar Sesión"
+      accessibilityRole="button"
+    >
+      <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+    </TouchableOpacity>
+  </ScrollView>
+
+  {/* ── MODAL DE CONFIRMACIÓN ── */ }
+  <ExitModal
+    visible={showExitModal}
+    onCancel={handleLogoutCancel}
+    onConfirm={handleLogoutConfirm}
+    loading={isLoading}
+  />
+    </View >
   );
 }
 
@@ -223,7 +249,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 24,
+    width: "100%",
+  },
+  carButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  carPhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  carPhotoPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E0E0E0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  carButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    letterSpacing: 0.5,
   },
   headerTitle: {
     fontSize: 34,

@@ -15,12 +15,14 @@ export interface PetitionPayload {
   origen: string;
   /** Departamento / área de destino del viaje. */
   destino: string;
-  /** Número de pasajeros solicitados. */
+  /** Número de acompañantes. */
   pasajeros: number;
   /** Nivel de prioridad del viaje: "Media" | "Alta". */
   prioridad: string;
   /** Descripción de la carga o motivo del viaje (opcional). */
   carga?: string;
+  /** Descripción del viaje (opcional). */
+  descripcion?: string;
 }
 
 /**
@@ -95,11 +97,13 @@ export function useSendPetition(): UseSendPetitionReturn {
           .from("peticiones")
           .insert({
             ci_pasajero: payload.ci, // FK al usuario autenticado
-            origen: payload.origen,
-            destino: payload.destino,
-            acompañantes: payload.pasajeros,
+            ci_driver: null,
+            origen_id: payload.origen,
+            destino_id: payload.destino,
+            num_acompañantes: payload.pasajeros,
             prioridad: payload.prioridad,
             carga: payload.carga?.trim() || null,
+            descripcion: payload.descripcion?.trim() || null,
             estado: "Pendiente", // Estado inicial de toda petición
             created_at: new Date().toISOString(),
           });

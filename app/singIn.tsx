@@ -5,6 +5,7 @@ import {
   type PickedImage,
 } from "@/components/ui/profile-picker";
 import { useAuth } from "@/context/auth-context";
+import { useGetLocations } from "@/hooks/useGetLocations";
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -44,17 +45,7 @@ const CI_REGEX = /^V-[0-9]{6,8}$/;
 // OPCIONES DE DEPARTAMENTO
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Lista de departamentos disponibles para el selector. */
-const GERENCIAS = [
-  "Gerencias",
-  "Operaciones",
-  "Mantenimiento",
-  "Recursos Humanos",
-  "Logística",
-  "Administración",
-  "Seguridad",
-  "Tecnología",
-];
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
@@ -84,7 +75,7 @@ export default function SingIn() {
   const [apellido, setApellido] = useState("");
   const [telefono, setTelefono] = useState("+58 ");
   const [ci, setCi] = useState("V-");
-  const [gerencia, setGerencia] = useState("Gerencias");
+  const [id_gerencia, setId_gerencia] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -102,6 +93,8 @@ export default function SingIn() {
 
   // ── Contexto de autenticación ──
   const { signUp, isLoading } = useAuth();
+
+  const { locations, isLoading: isLoadingLocations } = useGetLocations();
 
   // ── Subida de imagen de perfil a Supabase Storage ──
   const { uploadImage, uploading, error: uploadError } = useUploadImage();
@@ -254,7 +247,7 @@ export default function SingIn() {
       apellido: apellido.trim(),
       ci: ci.trim(),
       telefono: telefono.trim(),
-      gerencia: gerencia,
+      id_gerencia: id_gerencia,
     });
 
     if (serverEmailError) setEmailError(serverEmailError);
@@ -266,7 +259,7 @@ export default function SingIn() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeContainer}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -373,32 +366,34 @@ export default function SingIn() {
                 onPress={() => setShowDropdown(!showDropdown)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.dropdownSelected}>{gerencia}</Text>
+                <Text style={styles.dropdownSelected}>
+                  {locations?.find((loc) => loc.id === id_gerencia)?.nombre || "Seleccionar gerencia"}
+                </Text>
                 <Text style={styles.dropdownChevron}>▾</Text>
               </TouchableOpacity>
 
               {/* Lista desplegable */}
               {showDropdown && (
                 <View style={styles.dropdownList}>
-                  {GERENCIAS.map((ger) => (
+                  {locations?.map((loc) => (
                     <TouchableOpacity
-                      key={ger}
+                      key={loc.id}
                       style={[
                         styles.dropdownItem,
-                        ger === gerencia && styles.dropdownItemActive,
+                        loc.id === id_gerencia && styles.dropdownItemActive,
                       ]}
                       onPress={() => {
-                        setGerencia(ger);
+                        setId_gerencia(loc.id);
                         setShowDropdown(false);
                       }}
                     >
                       <Text
                         style={[
                           styles.dropdownItemText,
-                          ger === gerencia && styles.dropdownItemTextActive,
+                          loc.id === id_gerencia && styles.dropdownItemTextActive,
                         ]}
                       >
-                        {ger}
+                        {loc.nombre}
                       </Text>
                     </TouchableOpacity>
                   ))}

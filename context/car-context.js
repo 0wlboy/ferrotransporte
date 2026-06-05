@@ -137,6 +137,7 @@ export function CarProvider({ children }) {
 
       /** @type {VehicleProfile} */
       const carProfile = {
+        id: vehicle.id ?? null,
         modelo: vehicle.modelo ?? null,
         marca: vehicle.marca ?? null,
         placa: vehicle.placa ?? null,
@@ -265,7 +266,7 @@ export function CarProvider({ children }) {
         const { error: updateError } = await supabase
           .from("vehiculos")
           .update(dbChanges)
-          .eq("id", car.id);
+          .eq("placa", car.placa);
 
         if (updateError) {
           console.error(
