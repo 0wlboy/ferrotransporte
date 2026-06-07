@@ -1,20 +1,22 @@
 import ExitModal from "@/components/modals/exit-modal";
 import { useAuth } from "@/context/auth-context";
+import { useCars } from "@/context/car-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function Profile() {
   const { user, signOut, isLoading } = useAuth();
+  const { car } = useCars();
 
   // Estado de visibilidad del modal de confirmación de cierre de sesión
   const [showExitModal, setShowExitModal] = useState(false);
@@ -68,6 +70,24 @@ export default function Profile() {
 
         {/* Título */}
         <Text style={styles.headerTitle}>Perfil de Usuario</Text>
+        {user?.role === "Conductor" && (
+          <TouchableOpacity
+            onPress={() => router.push("/edit-car")}
+            activeOpacity={0.8}
+            style={styles.carProfileButton}
+            accessibilityLabel="Perfil del vehículo"
+            accessibilityRole="button"
+          >
+            {car?.foto_url ? (
+              <Image source={{ uri: car.foto_url }} style={styles.carPhoto} />
+            ) : (
+              <View style={styles.carPhotoPlaceholder}>
+                <MaterialCommunityIcons name="account" size={22} color="#888" />
+              </View>
+            )}
+            <Text>Vehiculo</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── CUERPO CON TARJETA DESLIZABLE ── */}
@@ -210,6 +230,44 @@ const styles = StyleSheet.create({
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 20 : 60,
     paddingBottom: 40,
     paddingHorizontal: 24,
+  },
+  carProfileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 24,
+  },
+  carPhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  carPhotoPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButton: {
     width: 44,

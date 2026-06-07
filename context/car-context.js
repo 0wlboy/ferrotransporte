@@ -18,6 +18,7 @@ import { useAuth } from "./auth-context";
  * Representa el perfil del vehículo asociado al conductor autenticado.
  *
  * @property {string}      id        - UUID único del vehículo.
+ * @property {string|null} ci_driver - CI del conductor.
  * @property {string|null} modelo    - Modelo del vehículo.
  * @property {string|null} marca     - Marca del vehículo.
  * @property {string|null} placa     - Placa del vehículo.
@@ -137,6 +138,8 @@ export function CarProvider({ children }) {
 
       /** @type {VehicleProfile} */
       const carProfile = {
+        id: vehicle.id,
+        ci_driver: vehicle.ci_driver,
         modelo: vehicle.modelo ?? null,
         marca: vehicle.marca ?? null,
         placa: vehicle.placa ?? null,
@@ -226,7 +229,7 @@ export function CarProvider({ children }) {
         if (profileImage) {
           nuevaFotoUrl = await uploadImage(profileImage, {
             bucket: "fotosCarros",
-            placa: placa,
+            placa: car?.placa,
             uniqueFileName: false,
             upsert: true,
           });

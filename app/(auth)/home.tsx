@@ -1,10 +1,10 @@
-import { PetitionCardSmall, TripRecord, TripStatus } from "@/components/ui/petition-card";
+import { PetitionCardSmall, PetitionCardBig, TripRecord, TripStatus } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Image,
   ScrollView,
@@ -94,6 +94,8 @@ function getActionButton(role: string | null): {
 
 export default function Home() {
   const { user } = useAuth();
+  const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
+  const [showModal, setShowModal] = useState<boolean>(false);
 
   const greeting = getGreeting();
   const primer_nombre = user?.primer_nombre || "Usuario";
@@ -204,10 +206,22 @@ export default function Home() {
             fecha: formattedDate,
             hora: formattedTime,
             estado: item.estado as TripStatus,
-            motivo: item.carga || undefined,
+            carga: item.carga || undefined,
+            acompañantes: item.acompañantes,
+            prioridad: item.prioridad,
+            descripcion: item.descripcion,
           };
 
-          return <PetitionCardSmall key={item.id} data={tripData} />;
+          return (
+            <PetitionCardSmall
+              key={item.id}
+              data={tripData}
+              onPress={() => {
+                setSelectedTrip(tripData);
+                setShowModal(true);
+              }}
+            />
+          );
         })}
 
         {/* ── VER MÁS ── */}
@@ -221,6 +235,16 @@ export default function Home() {
           <Text style={styles.verMasText}>Ver Mas</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ── DETALLE DEL VIAJE MODAL ── */}
+      <PetitionCardBig
+        visible={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedTrip(null);
+        }}
+        data={selectedTrip}
+      />
     </View>
   );
 }

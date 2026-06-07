@@ -1,13 +1,18 @@
+import { CarProvider } from "@/context/car-context";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Tabs } from "expo-router";
 import React from "react";
 
 export default function TabLayout() {
+  usePushNotifications();
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <CarProvider>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
       <Tabs.Screen
         name="home"
         options={{
@@ -51,24 +56,24 @@ export default function TabLayout() {
           tabBarStyle: { display: "none" },
         }}
       />
-
-      {/* Pantallas exclusivas de conductor */}
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: "Buzon de Entradas",
-          headerShown: false,
-          tabBarStyle: { display: "none" },
-        }}
-      />
-      <Tabs.Screen
-        name="edit-car"
-        options={{
-          title: "Editar Vehiculo",
-          headerShown: false,
-          tabBarStyle: { display: "none" },
-        }}
-      />
-    </Tabs>
+        {/* Pantallas exclusivas de conductor */}
+        <Tabs.Screen
+          name="inbox"
+          options={{
+            title: "Buzon de Entradas",
+            headerShown: false,
+            tabBarStyle: { display: "none" },
+          }}
+        />
+        <Tabs.Screen
+          name="edit-car"
+          options={{
+            title: "Editar Vehiculo",
+            headerShown: false,
+            tabBarStyle: { display: "none" },
+          }}
+        />
+      </Tabs>
+    </CarProvider>
   );
 }

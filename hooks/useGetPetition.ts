@@ -19,6 +19,7 @@ export interface PetitionData {
   carga: string | null;
   estado: string;
   created_at: string;
+  descripcion: string;
   usuario: { nombre: string; foto_url: string | null } | null;
   conductor: { nombre: string; foto_url: string | null } | null;
 }
@@ -161,6 +162,7 @@ export function useGetPetition(
             ),
             prioridad: peticion.prioridad ?? "Mediana",
             carga: peticion.carga ?? null,
+            descripcion: peticion.descripcion ?? null,
             estado: peticion.estado ?? "Pendiente",
             created_at: peticion.created_at ?? new Date().toISOString(),
             usuario: { nombre: usuarioNombre, foto_url: usuarioFoto },

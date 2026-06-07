@@ -1,5 +1,5 @@
 import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
-import { PetitionCardSmall, TripStatus } from "@/components/ui/petition-card";
+import { PetitionCardSmall, PetitionCardBig, TripStatus, TripRecord } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
@@ -32,6 +32,10 @@ export default function RecordScreen() {
   const [sortField, setSortField] = useState<SortField>("fecha");
   const [sortDirection, setSortDirection] = useState<SortDirection>("Descendente");
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
+
+  // Modal State for Petition Details
+  const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
+  const [showModal, setShowModal] = useState<boolean>(false);
 
   // 3. Perform real-time client-side sorting on retrieved petitions
   const sortedPetitions = useMemo(() => {
@@ -157,7 +161,7 @@ export default function RecordScreen() {
 
               const isConductor = user?.role?.toLowerCase() === "conductor";
               // Map PetitionData to expected TripRecord shape for PetitionCardSmall
-              const tripData = {
+              const tripData: TripRecord = {
                 id: item.id,
                 conductorNombre: isConductor
                   ? (item.usuario?.nombre || "Pasajero")
@@ -170,10 +174,21 @@ export default function RecordScreen() {
                 fecha: formattedDate,
                 hora: formattedTime,
                 estado: item.estado as TripStatus,
-                motivo: item.carga || undefined,
+                carga: item.carga || undefined,
+                acompañantes: item.acompañantes,
+                prioridad: item.prioridad,
+                descripcion: item.descripcion,
               };
 
-              return <PetitionCardSmall data={tripData} />;
+              return (
+                <PetitionCardSmall
+                  data={tripData}
+                  onPress={() => {
+                    setSelectedTrip(tripData);
+                    setShowModal(true);
+                  }}
+                />
+              );
             }}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
@@ -200,6 +215,16 @@ export default function RecordScreen() {
         onSelectField={(field) => setSortField(field)}
         currentDirection={sortDirection}
         onSelectDirection={(dir) => setSortDirection(dir)}
+      />
+
+      {/* ── PETITION DETAIL MODAL ── */}
+      <PetitionCardBig
+        visible={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedTrip(null);
+        }}
+        data={selectedTrip}
       />
     </SafeAreaView>
   );
