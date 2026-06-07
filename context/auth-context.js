@@ -26,6 +26,7 @@ import React, {
  * @property {string|null} ci_user - Cédula del usuario.
  * @property {string|null} foto_url - URL de la foto del usuario.
  * @property {string|null} gerencia - Gerencia a la que pertenece el usuario.
+ * @property {string|null} id_gerencia - ID/UUID de la gerencia a la que pertenece el usuario.
  * @property {string|null} role    - Rol del usuario en el sistema (ej: 'admin', 'conductor').
  * @property {string} createdAt   - Fecha de creación de la cuenta ISO 8601.
  */
@@ -182,6 +183,18 @@ export function AuthProvider({ children }) {
         );
       }
 
+      let locatioNombre = null;
+      if (profile?.id_gerencia) {
+        const { data: locData } = await supabase
+          .from("localizaciones")
+          .select("nombre")
+          .eq("id", profile.id_gerencia)
+          .single();
+        if (locData) {
+          locatioNombre = locData.nombre;
+        }
+      }
+
       // Construir objeto de usuario en memoria fusionando datos de auth, perfil consultado y authUser como fallback robusto
       const userProfile = {
         id: authUser.id,
@@ -192,7 +205,8 @@ export function AuthProvider({ children }) {
         ci_user: profile?.ci_user ?? authUser?.ci_user ?? null,
         telf: profile?.telf ?? authUser?.telf ?? null,
         foto_url: profile?.foto_url ?? authUser?.foto_url ?? null,
-        gerencia: profile?.gerencia ?? authUser?.gerencia ?? null,
+        gerencia: locatioNombre,
+        id_gerencia: profile?.id_gerencia ?? null,
         role: profile?.role ?? authUser?.role ?? "Pasajero",
         createdAt:
           authUser.created_at || authUser.createdAt || new Date().toISOString(),
@@ -301,7 +315,7 @@ export function AuthProvider({ children }) {
       apellido,
       ci,
       telefono,
-      gerencia,
+      id_gerencia,
     }) => {
       setIsLoading(true);
 
@@ -385,7 +399,7 @@ export function AuthProvider({ children }) {
               ci_user: ci,
               telf: telefono,
               foto_url: fotoPerfil ?? null,
-              gerencia: gerencia,
+              id_gerencia: id_gerencia,
               role: "Pasajero",
               activo: true, // verdadero por defecto
               updated_at: new Date().toISOString(),
@@ -393,6 +407,18 @@ export function AuthProvider({ children }) {
               last_login: new Date().toISOString(),
               created_at: new Date().toISOString(),
             });
+
+          let locatioNombre = null;
+          if (id_gerencia) {
+            const { data: locData } = await supabase
+              .from("localizaciones")
+              .select("nombre")
+              .eq("id", id_gerencia)
+              .single();
+            if (locData) {
+              locatioNombre = locData.nombre;
+            }
+          }
 
           const DataUser = {
             id: authData.user.id,
@@ -402,7 +428,8 @@ export function AuthProvider({ children }) {
             ci_user: ci,
             telf: telefono,
             foto_url: fotoPerfil ?? null,
-            gerencia: gerencia,
+            gerencia: locatioNombre,
+            id_gerencia: id_gerencia,
           };
 
           if (insertError) {
@@ -413,12 +440,10 @@ export function AuthProvider({ children }) {
             // No bloqueamos el flujo si falla la inserción del perfil extendido,
             // el usuario ya fue creado en Auth y se puede reintentar el perfil.
           } else {
-            // Cargar el perfil recién creado en memoria para evitar condiciones de carrera con onAuthStateChange
-            await loadUserProfile(DataUser);
+            setUser(DataUser);
           }
         }
 
-        // Navegar a la pantalla principal de la app
         router.replace("/(auth)/home");
         return { emailError: null, passwordError: null, generalError: null };
       } catch (err) {
@@ -512,7 +537,7 @@ export function AuthProvider({ children }) {
    * @param {string} [params.apellido]      - Nuevo apellido.
    * @param {string} [params.telf]          - Nuevo teléfono.
    * @param {string} [params.ci_user]       - Nueva cédula.
-   * @param {string} [params.gerencia]      - Nueva gerencia.
+   * @param {string} [params.id_gerencia]      - Nueva gerencia.
    * @param {string} [params.email]         - Nuevo correo (actualiza Supabase Auth).
    * @param {string} [params.password]      - Nueva contraseña (actualiza Supabase Auth).
    * @returns {Promise<{success?: boolean, error?: string}>}
@@ -524,7 +549,7 @@ export function AuthProvider({ children }) {
       apellido,
       telf,
       ci_user,
-      gerencia,
+      id_gerencia,
       email: newEmail,
       password: newPassword,
     }) => {
@@ -562,8 +587,8 @@ export function AuthProvider({ children }) {
         if (telf !== undefined && telf !== user.telf) dbChanges.telf = telf;
         if (ci_user !== undefined && ci_user !== user.ci_user)
           dbChanges.ci_user = ci_user;
-        if (gerencia !== undefined && gerencia !== user.gerencia)
-          dbChanges.gerencia = gerencia;
+        if (id_gerencia !== undefined && id_gerencia !== user.id_gerencia)
+          dbChanges.id_gerencia = id_gerencia;
         if (nuevaFotoUrl) dbChanges.foto_url = nuevaFotoUrl;
 
         // ── Paso 3: Actualizar email/password en Supabase Auth si cambiaron ──
@@ -610,6 +635,17 @@ export function AuthProvider({ children }) {
         // ── Paso 5: Reflejar cambios en el estado en memoria ──
         const memoryUpdate = { ...dbChanges };
         if (authChanges.email) memoryUpdate.email = authChanges.email;
+
+        if (dbChanges.id_gerencia) {
+          const { data: locData } = await supabase
+            .from("localizaciones")
+            .select("nombre")
+            .eq("id", dbChanges.id_gerencia)
+            .single();
+          if (locData) {
+            memoryUpdate.gerencia = locData.nombre;
+          }
+        }
 
         setUser((prev) => ({
           ...prev,
@@ -763,7 +799,7 @@ export function useAuth() {
   if (!context) {
     throw new Error(
       "[useAuth] El hook debe usarse dentro de un <AuthProvider>. " +
-        "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
+      "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
     );
   }
   return context;

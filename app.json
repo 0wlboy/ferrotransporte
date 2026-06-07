@@ -8,6 +8,10 @@
     "scheme": "ferrotransporte",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
+    },
     "ios": {
       "supportsTablet": true
     },

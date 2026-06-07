@@ -17,17 +17,18 @@ import {
 export default function Profile() {
   const { user, signOut, isLoading } = useAuth();
   const { car } = useCars();
+  const carFotoUrl = car?.foto_url || null;
 
   // Estado de visibilidad del modal de confirmación de cierre de sesión
   const [showExitModal, setShowExitModal] = useState(false);
 
   // Mapear campos con fallbacks por si acaso el usuario no tiene los datos cargados aún
-  const primer_nombre = user?.primer_nombre || "Carlos";
-  const apellido = user?.apellido || "Narvaez";
-  const telefono = user?.telf || "+58 4129807";
-  const ci = user?.ci_user || "V-20203456";
-  const gerencia = user?.gerencia || "Gerencias";
-  const email = user?.email || "carlos@javier123.com";
+  const primer_nombre = user?.primer_nombre || "Nombre";
+  const apellido = user?.apellido || "Apellido";
+  const telefono = user?.telf || "Telefono";
+  const ci = user?.ci_user || "CI";
+  const gerencia = user?.gerencia || "Gerencia";
+  const email = user?.email || "Email";
   const fotoUrl = user?.foto_url || null;
 
   /** Abre el modal de confirmación (no cierra sesión de inmediato) */
@@ -57,16 +58,40 @@ export default function Profile() {
 
       {/* ── ENCABEZADO CARMESÍ ── */}
       <View style={styles.header}>
-        {/* Botón de Atrás */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          style={styles.backButton}
-          accessibilityLabel="Volver"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#A10F2D" />
-        </TouchableOpacity>
+        <View style={styles.headerTopRow}>
+          {/* Botón de Atrás */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+            style={styles.backButton}
+            accessibilityLabel="Volver"
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={22}
+              color="#A10F2D"
+            />
+          </TouchableOpacity>
+
+          {/* Botón de Vehículo */}
+          {user?.role === "Conductor" && (
+            <TouchableOpacity
+              style={styles.carButton}
+              onPress={() => router.push("/(auth)/edit-car" as any)}
+              activeOpacity={0.8}
+            >
+              {carFotoUrl ? (
+                <Image source={{ uri: carFotoUrl }} style={styles.carPhotoSmall} />
+              ) : (
+                <View style={styles.carPhotoPlaceholderSmall}>
+                  <MaterialCommunityIcons name="car" size={20} color="#888" />
+                </View>
+              )}
+              <Text style={styles.carButtonText}>VEHÍCULO</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Título */}
         <Text style={styles.headerTitle}>Perfil de Usuario</Text>
@@ -281,7 +306,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 24,
+    width: "100%",
+  },
+  carButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  carPhotoSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  carPhotoPlaceholderSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E0E0E0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  carButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    letterSpacing: 0.5,
   },
   headerTitle: {
     fontSize: 34,

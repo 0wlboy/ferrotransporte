@@ -1,5 +1,5 @@
 import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
-import { PetitionCardSmall, PetitionCardBig, TripStatus, TripRecord } from "@/components/ui/petition-card";
+import { PetitionCardSmall, PetitionCardBig, TripRecord, TripPriority } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
@@ -10,13 +10,13 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RecordScreen() {
   const { user } = useAuth();
@@ -64,7 +64,7 @@ export default function RecordScreen() {
   }, [petitions, sortField, sortDirection]);
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.light.tint} />
 
       {/* ── HEADER ── */}
@@ -89,8 +89,8 @@ export default function RecordScreen() {
       </View>
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <View style={styles.contentContainer}>
-        
+      <SafeAreaView style={styles.contentContainer} edges={["bottom", "left", "right"]}>
+
         {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
@@ -163,26 +163,28 @@ export default function RecordScreen() {
               // Map PetitionData to expected TripRecord shape for PetitionCardSmall
               const tripData: TripRecord = {
                 id: item.id,
-                conductorNombre: isConductor
-                  ? (item.usuario?.nombre || "Pasajero")
-                  : (item.conductor?.nombre || "Por Asignar"),
-                conductorFoto: isConductor
-                  ? (item.usuario?.foto_url || undefined)
-                  : (item.conductor?.foto_url || undefined),
+                userNombre: isConductor
+                  ? item.usuario?.nombre || "Pasajero"
+                  : item.conductor?.nombre || "Por Asignar",
+                userFoto: isConductor
+                  ? item.usuario?.foto_url || undefined
+                  : item.conductor?.foto_url || undefined,
                 origen: item.origen,
                 destino: item.destino,
+                acompañantes: item.acompañantes || 0,
+                carga: item.carga || "Sin carga",
                 fecha: formattedDate,
                 hora: formattedTime,
-                estado: item.estado as TripStatus,
-                carga: item.carga || undefined,
-                acompañantes: item.acompañantes,
-                prioridad: item.prioridad,
-                descripcion: item.descripcion,
+                prioridad: item.prioridad as TripPriority,
+                motivo: item.carga || undefined,
+                estado: item.estado as any,
+                descripcion: item.descripcion || "",
               };
 
               return (
                 <PetitionCardSmall
                   data={tripData}
+                  viewerRole={user?.role as "Conductor" | "Pasajero"}
                   onPress={() => {
                     setSelectedTrip(tripData);
                     setShowModal(true);
@@ -205,7 +207,7 @@ export default function RecordScreen() {
             }
           />
         )}
-      </View>
+      </SafeAreaView>
 
       {/* ── SORTING CONFIGURATION MODAL ── */}
       <OrdenModal

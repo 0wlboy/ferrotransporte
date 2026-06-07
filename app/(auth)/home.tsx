@@ -1,4 +1,9 @@
-import { PetitionCardSmall, PetitionCardBig, TripRecord, TripStatus } from "@/components/ui/petition-card";
+import {
+  PetitionCardBig,
+  PetitionCardSmall,
+  TripRecord,
+  TripPriority
+} from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
@@ -22,30 +27,30 @@ import {
 const PLACEHOLDER_TRIPS: TripRecord[] = [
   {
     id: "1",
-    conductorNombre: "Carlos Javier",
+    userNombre: "Carlos Javier",
     origen: "Calidad",
     destino: "Gerencia",
     fecha: "12/01/2026",
     hora: "1:00 pm",
-    estado: "Completado",
+    prioridad: "Media",
   },
   {
     id: "2",
-    conductorNombre: "Carlos Javier",
+    userNombre: "Carlos Javier",
     origen: "Calidad",
     destino: "Gerencia",
     fecha: "12/01/2026",
     hora: "1:00 pm",
-    estado: "Cancelado",
+    prioridad: "Alta",
   },
   {
     id: "3",
-    conductorNombre: "María González",
+    userNombre: "María González",
     origen: "Administración",
     destino: "Taller",
     fecha: "10/01/2026",
     hora: "9:30 am",
-    estado: "Completado",
+    prioridad: "Media",
   },
 ];
 
@@ -195,31 +200,27 @@ export default function Home() {
           const isConductor = user?.role?.toLowerCase() === "conductor";
           const tripData: TripRecord = {
             id: item.id,
-            conductorNombre: isConductor
-              ? (item.usuario?.nombre || "Pasajero")
-              : (item.conductor?.nombre || "Por Asignar"),
-            conductorFoto: isConductor
-              ? (item.usuario?.foto_url || undefined)
-              : (item.conductor?.foto_url || undefined),
+            userNombre: isConductor
+              ? item.usuario?.nombre || "Pasajero"
+              : item.conductor?.nombre || "Por Asignar",
+            userFoto: isConductor
+              ? item.usuario?.foto_url || undefined
+              : item.conductor?.foto_url || undefined,
             origen: item.origen,
             destino: item.destino,
+            acompañantes: item.acompañantes || 0,
+            carga: item.carga || "Sin carga",
             fecha: formattedDate,
             hora: formattedTime,
-            estado: item.estado as TripStatus,
-            carga: item.carga || undefined,
-            acompañantes: item.acompañantes,
-            prioridad: item.prioridad,
-            descripcion: item.descripcion,
+            prioridad: item.prioridad as TripPriority,
+            motivo: item.carga || undefined,
           };
 
           return (
             <PetitionCardSmall
               key={item.id}
               data={tripData}
-              onPress={() => {
-                setSelectedTrip(tripData);
-                setShowModal(true);
-              }}
+              viewerRole={user?.role as "Conductor" | "Pasajero"}
             />
           );
         })}
@@ -229,7 +230,7 @@ export default function Home() {
           style={styles.verMasButton}
           activeOpacity={0.85}
           onPress={() => {
-            router.push("/record")
+            router.push("/record");
           }}
         >
           <Text style={styles.verMasText}>Ver Mas</Text>

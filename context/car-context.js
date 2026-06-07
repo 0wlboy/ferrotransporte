@@ -101,10 +101,7 @@ export function CarProvider({ children }) {
    */
   const loadCarProfile = async (ciUser) => {
     try {
-      console.log(
-        "[CarContext] Buscando vehículo para ci_driver:",
-        ciUser,
-      );
+      console.log("[CarContext] Buscando vehículo para ci_driver:", ciUser);
 
       const { data: vehicle, error } = await supabase
         .from("vehiculos")
@@ -138,8 +135,7 @@ export function CarProvider({ children }) {
 
       /** @type {VehicleProfile} */
       const carProfile = {
-        id: vehicle.id,
-        ci_driver: vehicle.ci_driver,
+        id: vehicle.id ?? null,
         modelo: vehicle.modelo ?? null,
         marca: vehicle.marca ?? null,
         placa: vehicle.placa ?? null,
@@ -218,7 +214,9 @@ export function CarProvider({ children }) {
       }
 
       if (!car?.id) {
-        return { error: "No se encontró un vehículo asociado a este conductor." };
+        return {
+          error: "No se encontró un vehículo asociado a este conductor.",
+        };
       }
 
       setIsLoading(true);
@@ -246,13 +244,14 @@ export function CarProvider({ children }) {
 
         if (modelo !== undefined && modelo !== car.modelo)
           dbChanges.modelo = modelo;
-        if (marca !== undefined && marca !== car.marca)
-          dbChanges.marca = marca;
-        if (año !== undefined && año !== car.año)
-          dbChanges.año = año;
+        if (marca !== undefined && marca !== car.marca) dbChanges.marca = marca;
+        if (año !== undefined && año !== car.año) dbChanges.año = año;
         if (num_asientos !== undefined && num_asientos !== car.num_asientos)
           dbChanges.num_asientos = num_asientos;
-        if (maletero_amplio !== undefined && maletero_amplio !== car.maletero_amplio)
+        if (
+          maletero_amplio !== undefined &&
+          maletero_amplio !== car.maletero_amplio
+        )
           dbChanges.maletero_amplio = maletero_amplio;
         if (estado !== undefined && estado !== car.estado)
           dbChanges.estado = estado;
@@ -268,7 +267,7 @@ export function CarProvider({ children }) {
         const { error: updateError } = await supabase
           .from("vehiculos")
           .update(dbChanges)
-          .eq("id", car.id);
+          .eq("placa", car.placa);
 
         if (updateError) {
           console.error(
@@ -338,7 +337,7 @@ export function useCars() {
   if (!context) {
     throw new Error(
       "[useCars] El hook debe usarse dentro de un <CarProvider>. " +
-      "Asegúrate de envolver tu árbol de componentes con <CarProvider>.",
+        "Asegúrate de envolver tu árbol de componentes con <CarProvider>.",
     );
   }
   return context;

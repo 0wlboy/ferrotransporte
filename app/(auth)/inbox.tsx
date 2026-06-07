@@ -1,13 +1,5 @@
-import OrdenModal, {
-    SortDirection,
-    SortField,
-} from "@/components/modals/orden-modal";
-import {
-    PetitionCardBig,
-    PetitionCardSmall,
-    TripRecord,
-    TripStatus,
-} from "@/components/ui/petition-card";
+import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
+import { PetitionCardBig, PetitionCardSmall, TripRecord, TripPriority } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useCars } from "@/context/car-context";
@@ -16,17 +8,17 @@ import { useGetPetition } from "@/hooks/useGetPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    RefreshControl,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function Inbox() {
@@ -42,8 +34,7 @@ export default function Inbox() {
 
   // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
   const [sortField, setSortField] = useState<SortField>("fecha");
-  const [sortDirection, setSortDirection] =
-    useState<SortDirection>("Descendente");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("Descendente");
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
 
   // Modal State for Petition Details
@@ -105,7 +96,7 @@ export default function Inbox() {
   }, [petitions, sortField, sortDirection]);
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.light.tint} />
 
       {/* ── HEADER ── */}
@@ -130,7 +121,8 @@ export default function Inbox() {
       </View>
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <View style={styles.contentContainer}>
+      <SafeAreaView style={styles.contentContainer} edges={["bottom", "left", "right"]}>
+
         {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
@@ -202,22 +194,24 @@ export default function Inbox() {
               // Map PetitionData to expected TripRecord shape for PetitionCardSmall
               const tripData: TripRecord = {
                 id: item.id,
-                conductorNombre: item.usuario?.nombre || "Por Asignar",
-                conductorFoto: item.usuario?.foto_url || undefined,
+                userNombre: item.usuario?.nombre || "Por Asignar",
+                userFoto: item.usuario?.foto_url || undefined,
                 origen: item.origen,
                 destino: item.destino,
+                acompañantes: item.acompañantes || 0,
+                carga: item.carga || "Sin carga",
                 fecha: formattedDate,
                 hora: formattedTime,
-                estado: item.estado as TripStatus,
-                carga: item.carga || undefined,
-                acompañantes: item.acompañantes,
-                prioridad: item.prioridad,
-                descripcion: item.descripcion,
+                prioridad: item.prioridad as TripPriority,
+                motivo: item.carga || undefined,
+                estado: item.estado as any,
+                descripcion: item.descripcion || "",
               };
 
               return (
                 <PetitionCardSmall
                   data={tripData}
+                  viewerRole="Conductor"
                   onPress={() => {
                     setSelectedTrip(tripData);
                     setShowModal(true);
@@ -232,18 +226,15 @@ export default function Inbox() {
                   size={64}
                   color="#B0B0B0"
                 />
-                <Text style={styles.emptyText}>
-                  No tienes viajes registrados
-                </Text>
+                <Text style={styles.emptyText}>No tienes viajes registrados</Text>
                 <Text style={styles.emptySubText}>
-                  Las peticiones de transporte que realices o tengas asignadas
-                  aparecerán aquí.
+                  Las peticiones de transporte que realices o tengas asignadas aparecerán aquí.
                 </Text>
               </View>
             }
           />
         )}
-      </View>
+      </SafeAreaView>
 
       {/* ── SORTING CONFIGURATION MODAL ── */}
       <OrdenModal

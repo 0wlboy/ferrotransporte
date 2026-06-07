@@ -29,12 +29,12 @@ export interface UseGetPetitionOptions {
   userId?: string | null;
   role?: "Pasajero" | "Conductor" | string | null;
   asignacion?:
-    | "Pendiente"
-    | "Completado"
-    | "Cancelado"
-    | "En Camino"
-    | string
-    | null;
+  | "Pendiente"
+  | "Completado"
+  | "Cancelado"
+  | "En Camino"
+  | string
+  | null;
 }
 
 /** Valor de retorno del hook. */

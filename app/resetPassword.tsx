@@ -109,7 +109,7 @@ export default function ResetPassword() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
       <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}

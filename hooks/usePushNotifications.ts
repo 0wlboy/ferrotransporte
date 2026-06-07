@@ -20,8 +20,8 @@ Notifications.setNotificationHandler({
 export function usePushNotifications() {
   const { user } = useAuth();
   const router = useRouter();
-  const notificationListener = useRef<any>();
-  const responseListener = useRef<any>();
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
 
   useEffect(() => {
     if (!user?.id) return;
