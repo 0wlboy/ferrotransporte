@@ -22,12 +22,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { to, title, body: customBody, data, petitionId, status } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
 
-    let targetToken = to;
-    let notificationTitle = title;
-    let notificationBody = customBody;
-    let notificationData = data || {};
+    let petitionId = body.petitionId;
+    let status = body.status;
+    let targetToken = body.to;
+    let notificationTitle = body.title;
+    let notificationBody = body.body;
+    let notificationData = body.data || {};
 
     // Retrieve credentials from environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -43,11 +45,41 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // If petitionId and status are provided, resolve target details from the DB
-    if (petitionId && status) {
-      console.log(`Processing petition ID: ${petitionId} for status: ${status}`);
+    // Resolve passenger and driver identification
+    let ciPasajero = null;
+    let ciDriver = null;
 
-      // 1. Fetch petition to get passenger and driver documents
+    // Detect if request comes from a Supabase Database Webhook (pg_net)
+    if (body.record && body.table === "peticiones") {
+      console.log("Database Webhook detected on table: peticiones");
+      petitionId = body.record.id;
+      status = body.record.estado;
+      ciPasajero = body.record.ci_pasajero;
+      ciDriver = body.record.ci_driver;
+
+      // 1. Skip if it's an UPDATE but the state didn't change (e.g. updating coordinates or other fields)
+      if (body.type === "UPDATE" && body.old_record && body.old_record.estado === status) {
+        console.log(`Omitiendo: El estado '${status}' no ha cambiado.`);
+        return new Response(JSON.stringify({ message: "Omitido: el estado no ha cambiado" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 2. Check if status is one of our target states (En Camino, En Sitio, Completado)
+      const targetStatuses = ["En Camino", "En Sitio", "Completado"];
+      if (!targetStatuses.includes(status)) {
+        console.log(`Omitiendo: El estado '${status}' no requiere notificación.`);
+        return new Response(JSON.stringify({ message: `Omitido: el estado '${status}' no requiere notificación` }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // If petitionId and status are provided directly (e.g. direct API test), fetch missing data from DB
+    if (petitionId && status && (!ciPasajero || !targetToken)) {
+      console.log(`Fetching petition details from DB for ID: ${petitionId}`);
       const { data: petitionData, error: petitionError } = await supabaseAdmin
         .from("peticiones")
         .select("ci_pasajero, ci_driver")
@@ -62,53 +94,56 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      if (!petitionData) {
-        return new Response(JSON.stringify({ error: "Petition not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (petitionData) {
+        ciPasajero = petitionData.ci_pasajero;
+        ciDriver = petitionData.ci_driver;
       }
+    }
 
-      const { ci_pasajero, ci_driver } = petitionData;
-
-      if (!ci_pasajero) {
-        return new Response(JSON.stringify({ error: "Petition has no passenger CI" }), {
+    // Resolve push notification parameters for status updates
+    if (petitionId && status) {
+      if (!ciPasajero) {
+        return new Response(JSON.stringify({ error: "Passenger CI not found" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // 2. Fetch passenger push token
-      const { data: passengerData, error: passengerError } = await supabaseAdmin
-        .from("usuarios")
-        .select("push_token")
-        .eq("ci_user", ci_pasajero)
-        .maybeSingle();
+      // Fetch passenger push token if not provided directly
+      if (!targetToken) {
+        const { data: passengerData, error: passengerError } = await supabaseAdmin
+          .from("usuarios")
+          .select("push_token")
+          .eq("ci_user", ciPasajero)
+          .maybeSingle();
 
-      if (passengerError) {
-        console.error("Error fetching passenger:", passengerError);
-        return new Response(JSON.stringify({ error: passengerError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        if (passengerError) {
+          console.error("Error fetching passenger:", passengerError);
+          return new Response(JSON.stringify({ error: passengerError.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (!passengerData?.push_token) {
+          console.error(`No push token registered for passenger: ${ciPasajero}`);
+          // Return 200 OK so Database Webhooks don't report constant failures when users haven't enabled push notifications
+          return new Response(JSON.stringify({ message: "Passenger has no push token registered" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        targetToken = passengerData.push_token;
       }
 
-      if (!passengerData?.push_token) {
-        return new Response(JSON.stringify({ error: "Passenger has no push token registered" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      targetToken = passengerData.push_token;
-
-      // 3. Fetch driver name if available
+      // Fetch driver name if available
       let driverName = "";
-      if (ci_driver) {
+      if (ciDriver) {
         const { data: driverData, error: driverError } = await supabaseAdmin
           .from("usuarios")
           .select("primer_nombre, apellido")
-          .eq("ci_user", ci_driver)
+          .eq("ci_user", ciDriver)
           .maybeSingle();
 
         if (driverError) {
@@ -124,7 +159,7 @@ Deno.serve(async (req: Request) => {
         driverName = "El conductor";
       }
 
-      // 4. Construct payload based on status
+      // Construct payload based on status
       notificationData = { ...notificationData, petitionId, status };
 
       if (status === "En Camino") {
