@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "885842209603",
+    "project_id": "ferrotransporte-e0c67",
+    "storage_bucket": "ferrotransporte-e0c67.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:885842209603:android:b7ae78b8405d9e66105df6",
+        "android_client_info": {
+          "package_name": "com.cesar0808.ferroTransporte"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDX5NI4rQF6ezi741VkhncAl-hXcFnAkrU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

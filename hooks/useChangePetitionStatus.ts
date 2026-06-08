@@ -41,8 +41,8 @@ export function useChangePetitionStatus(): UseChangePetitionStatusReturn {
 
       if (error) throw error;
 
-      if (status === "En Camino") {
-        sendNotificationAsync(petitionId, driverName);
+      if (status === "En Camino" || status === "En Sitio" || status === "Completado") {
+        sendNotificationAsync(petitionId, status);
       }
 
       return data;
@@ -57,45 +57,21 @@ export function useChangePetitionStatus(): UseChangePetitionStatusReturn {
   };
 }
 
-async function sendNotificationAsync(petitionId: string, driverName?: string) {
+async function sendNotificationAsync(petitionId: string, status: string) {
   try {
-    const { data: petitionData } = await supabase
-      .from("peticiones")
-      .select("ci_pasajero")
-      .eq("id", petitionId)
-      .maybeSingle();
+    const { data, error } = await supabase.functions.invoke("send-push-notification", {
+      body: {
+        petitionId,
+        status,
+      },
+    });
 
-    if (petitionData?.ci_pasajero) {
-      const { data: passengerData } = await supabase
-        .from("usuarios")
-        .select("push_token")
-        .eq("ci_user", petitionData.ci_pasajero)
-        .maybeSingle();
-
-      if (passengerData?.push_token) {
-        const title = "¡Tu transporte está en camino!";
-        const body = driverName
-          ? `El conductor ${driverName} ha aceptado tu viaje.`
-          : "Un conductor ha aceptado tu petición de transporte.";
-
-        await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: passengerData.push_token,
-            sound: "default",
-            title,
-            body,
-            data: { petitionId },
-          }),
-        });
-        console.log("Notificación push enviada exitosamente.");
-      }
+    if (error) {
+      console.error("Error al invocar la Edge Function send-push-notification:", error);
+    } else {
+      console.log("Respuesta de la Edge Function:", data);
     }
   } catch (err) {
-    console.error("Error al enviar notificación push:", err);
+    console.error("Excepción al enviar la notificación push:", err);
   }
 }

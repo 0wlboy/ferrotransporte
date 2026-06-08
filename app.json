@@ -24,7 +24,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.cesar0808.ferroTransporte"
+      "package": "com.cesar0808.ferroTransporte",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
