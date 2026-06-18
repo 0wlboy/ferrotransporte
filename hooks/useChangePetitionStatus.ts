@@ -30,13 +30,13 @@ export function useChangePetitionStatus(): UseChangePetitionStatusReturn {
         ci_driver,
         placa_vehiculo,
       );
+      const updateData: any = { estado: status };
+      if (ci_driver !== undefined) updateData.ci_driver = ci_driver;
+      if (placa_vehiculo !== undefined) updateData.placa_vehiculo = placa_vehiculo;
+
       const { data, error } = await supabase
         .from("peticiones")
-        .update({
-          estado: status,
-          ci_driver: ci_driver,
-          placa_vehiculo: placa_vehiculo,
-        })
+        .update(updateData)
         .eq("id", petitionId);
 
       if (error) throw error;

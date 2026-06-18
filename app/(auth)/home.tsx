@@ -2,11 +2,13 @@ import {
   PetitionCardBig,
   PetitionCardSmall,
   TripRecord,
-  TripPriority
+  TripPriority,
+  ActiveTripCard,
 } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
+import { useChangePetitionStatus } from "@/hooks/useChangePetitionStatus";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -18,6 +20,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,6 +104,7 @@ function getActionButton(role: string | null): {
 
 export default function Home() {
   const { user } = useAuth();
+  const { changePetitionStatus } = useChangePetitionStatus();
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
 
@@ -108,12 +114,95 @@ export default function Home() {
     user?.role ?? null,
   );
 
-  // Mostrar solo los 2 más recientes en el resumen
-  const { petitions: recentTrips = [] } = useGetPetition({
+  // Fetch all user petitions reactively
+  const { petitions: allPetitions = [], isLoading, refetch } = useGetPetition({
     userId: user?.ci_user,
     role: user?.role,
-    asignacion: "Completado",
   });
+
+  // Active trip is any petition where state is not Pendiente, Cancelado, or Completado
+  const activeTripData = allPetitions.find(
+    (item) =>
+      item.estado !== "Pendiente" &&
+      item.estado !== "Cancelado" &&
+      item.estado !== "Completado"
+  );
+
+  // Convert active petition data to TripRecord format if it exists
+  const activeTrip: TripRecord | null = activeTripData
+    ? {
+        id: activeTripData.id,
+        userNombre:
+          user?.role?.toLowerCase() === "conductor"
+            ? activeTripData.usuario?.nombre || "Pasajero"
+            : activeTripData.conductor?.nombre || "Por Asignar",
+        userFoto:
+          user?.role?.toLowerCase() === "conductor"
+            ? activeTripData.usuario?.foto_url || undefined
+            : activeTripData.conductor?.foto_url || undefined,
+        origen: activeTripData.origen,
+        destino: activeTripData.destino,
+        acompañantes: activeTripData.acompañantes || 0,
+        carga: activeTripData.carga || "Sin carga",
+        fecha: new Date(activeTripData.created_at).toLocaleDateString("es-ES", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        hora: new Date(activeTripData.created_at).toLocaleTimeString("es-ES", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+        prioridad: activeTripData.prioridad as TripPriority,
+        estado: activeTripData.estado as any,
+        descripcion: activeTripData.descripcion || "",
+      }
+    : null;
+
+  // Filter completed petitions for the travel history (Historial de viajes)
+  const completedPetitions = allPetitions.filter((p) => p.estado === "Completado");
+  const recentTrips = completedPetitions;
+
+  // Check if passenger or driver has an active petition (Pending, En Camino, En Sitio, etc.)
+  const hasActivePetition = allPetitions.some(
+    (p) => p.estado !== "Completado" && p.estado !== "Cancelado"
+  );
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!activeTrip) return;
+
+    let title = "Confirmar acción";
+    let message = `¿Estás seguro de que deseas cambiar el estado a "${newStatus}"?`;
+    if (newStatus === "Cancelado") {
+      title = "Cancelar Viaje";
+      message = "¿Estás seguro de que deseas cancelar este viaje?";
+    }
+
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Sí",
+          onPress: async () => {
+            try {
+              await changePetitionStatus({
+                petitionId: activeTrip.id,
+                status: newStatus,
+              });
+              await refetch();
+              Alert.alert("Éxito", `El estado del viaje ha sido actualizado a "${newStatus}".`);
+            } catch (err) {
+              console.error("Error al actualizar estado del viaje:", err);
+              Alert.alert("Error", "No se pudo actualizar el estado del viaje. Intente de nuevo.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -163,11 +252,35 @@ export default function Home() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={refetch}
+            colors={[Colors.light.tint]}
+            tintColor={Colors.light.tint}
+          />
+        }
       >
+        {/* ── VIAJE ACTIVO ── */}
+        {activeTrip && (
+          <View style={styles.activeTripContainer}>
+            <Text style={styles.sectionTitle}>VIAJE ACTIVO</Text>
+            <ActiveTripCard
+              data={activeTrip}
+              viewerRole={user?.role as "Conductor" | "Pasajero"}
+              onStatusChange={handleStatusChange}
+            />
+          </View>
+        )}
+
         {/* ── BOTÓN DE ACCIÓN PRINCIPAL ── */}
         <TouchableOpacity
-          style={styles.actionButton}
-          activeOpacity={0.85}
+          style={[
+            styles.actionButton,
+            hasActivePetition && styles.actionButtonDisabled
+          ]}
+          activeOpacity={hasActivePetition ? 1 : 0.85}
+          disabled={hasActivePetition}
           onPress={() => {
             router.push(getActionButton(user?.role ?? null).route as any);
           }}
@@ -176,9 +289,11 @@ export default function Home() {
             name={actionIcon as any}
             size={48}
             color="#FFFFFF"
-            style={styles.actionIcon}
+            style={[styles.actionIcon, hasActivePetition && styles.actionIconDisabled]}
           />
-          <Text style={styles.actionButtonText}>{actionLabel}</Text>
+          <Text style={[styles.actionButtonText, hasActivePetition && styles.actionButtonTextDisabled]}>
+            {actionLabel}
+          </Text>
         </TouchableOpacity>
 
         {/* ── HISTORIAL DE VIAJES ── */}
@@ -500,5 +615,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.3,
+  },
+  activeTripContainer: {
+    marginBottom: 20,
+  },
+  actionButtonDisabled: {
+    backgroundColor: "#7E8494",
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  actionIconDisabled: {
+    opacity: 0.65,
+  },
+  actionButtonTextDisabled: {
+    color: "#E0E0E0",
   },
 });

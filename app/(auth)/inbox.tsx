@@ -62,7 +62,18 @@ export default function Inbox() {
       setShowModal(false);
       setSelectedTrip(null);
       refetch();
-      Alert.alert("Éxito", "Has aceptado la petición de transporte.");
+      Alert.alert(
+        "Éxito",
+        "Has aceptado la petición de transporte.",
+        [
+          {
+            text: "Aceptar",
+            onPress: () => {
+              router.replace("/(auth)/home" as any);
+            },
+          },
+        ]
+      );
     } catch (err) {
       console.error("Error al aceptar la petición:", err);
       Alert.alert("Error", "No se pudo aceptar la petición. Intenta de nuevo.");

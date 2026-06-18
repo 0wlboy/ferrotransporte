@@ -22,7 +22,7 @@ export interface TripRecord {
 }
 
 export type TripPriority = "Media" | "Alta";
-export type TripStatus = "Completado" | "Cancelado" | "En Camino" | "Pendiente";
+export type TripStatus = "Completado" | "Cancelado" | "En Camino" | "Pendiente" | "En Sitio";
 
 function getPrioridadColor(estado: TripPriority): string {
   switch (estado) {
@@ -43,6 +43,8 @@ function getStatusColor(estado: TripStatus): string {
       return "#C62828";
     case "En Camino":
       return "#1565C0";
+    case "En Sitio":
+      return "#D84315";
     case "Pendiente":
       return "#E65100";
     default:
@@ -328,6 +330,164 @@ export function PetitionCardBig({
   );
 }
 
+export function ActiveTripCard({
+  data,
+  viewerRole,
+  onStatusChange,
+}: {
+  data: TripRecord;
+  viewerRole: "Conductor" | "Pasajero";
+  onStatusChange: (status: string) => Promise<void>;
+}) {
+  if (!data) return null;
+
+  const isConductor = viewerRole === "Conductor";
+  const labelText = isConductor ? "Usuario:" : "Conductor:";
+
+  // Get name and photo of the other party
+  const displayName = data.userNombre || data.conductorNombre || "Por asignar";
+  const displayFoto = data.userFoto || data.conductorFoto;
+
+  return (
+    <View style={styles.activeCard}>
+      {/* Fila superior: foto + nombre + origen/destino */}
+      <View style={styles.tripCardTop}>
+        {/* Avatar del conductor/usuario */}
+        <View style={[styles.avatarContainer, styles.avatarContainerBig]}>
+          {displayFoto ? (
+            <Image
+              source={{ uri: displayFoto }}
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <MaterialCommunityIcons name="account" size={28} color="#888" />
+            </View>
+          )}
+        </View>
+
+        {/* Nombre del conductor/usuario */}
+        <View style={styles.tripConductorInfo}>
+          <Text style={styles.tripConductorLabel}>{labelText}</Text>
+          <Text style={styles.tripConductorName}>
+            {displayName}
+          </Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoText}>
+              Acomp.: <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
+            </Text>
+            <Text style={styles.infoText}>
+              {"  "}Carga: <Text style={styles.infoValue}>{data.carga ?? "Ninguna"}</Text>
+            </Text>
+          </View>
+        </View>
+
+        {/* Origen → Destino */}
+        <View style={styles.tripRoute}>
+          <View style={styles.tripRouteRow}>
+            <Text style={styles.tripRouteLabel}>Origen </Text>
+            <Text style={styles.tripRouteValue}>{data.origen}</Text>
+          </View>
+          <View style={styles.tripArrowRow}>
+            <MaterialCommunityIcons
+              name="arrow-down"
+              size={14}
+              color={Colors.light.tint}
+              style={styles.tripArrowIcon}
+            />
+          </View>
+          <View style={styles.tripRouteRow}>
+            <Text style={styles.tripRouteLabel}>Destino </Text>
+            <Text style={styles.tripRouteValue}>{data.destino}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Separador */}
+      <View style={styles.tripDivider} />
+
+      {/* Fila inferior: fecha + estado */}
+      <View style={styles.tripCardBottom}>
+        <Text style={styles.tripDateText}>
+          Fecha: {data.fecha}
+          {"  "}
+          {data.hora}
+        </Text>
+        <View style={styles.priorityContainer}>
+          <Text style={styles.priorityLabel}>Estado: </Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(data.estado ?? "En Camino") },
+            ]}
+          >
+            <Text style={styles.statusBadgeText}>
+              {data.estado ?? "En Camino"}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Separador */}
+      <View style={styles.tripDivider} />
+
+      {/* Descripción */}
+      <View style={styles.tripDescriptionContainer}>
+        <Text style={styles.tripDescriptionLabel}>Descripcion</Text>
+        <View style={styles.descriptionBox}>
+          <Text style={styles.descriptionText}>
+            {data.descripcion || "Sin descripción"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Acciones */}
+      <View style={styles.tripActionsContainer}>
+        {viewerRole === "Pasajero" ? (
+          <TouchableOpacity
+            style={[styles.tripActionButton, styles.cancelBtnActive]}
+            onPress={() => onStatusChange("Cancelado")}
+          >
+            <Text style={styles.cancelBtnActiveText}>Cancelar</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.tripActionButton, styles.cancelBtnActive]}
+              onPress={() => onStatusChange("Cancelado")}
+            >
+              <Text style={styles.cancelBtnActiveText}>Cancelar</Text>
+            </TouchableOpacity>
+
+            {data.estado === "En Sitio" ? (
+              <TouchableOpacity
+                style={[styles.tripActionButton, styles.onTheWayBtnActive]}
+                onPress={() => onStatusChange("En Camino")}
+              >
+                <Text style={styles.onTheWayBtnActiveText}>En Camino</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.tripActionButton, styles.onSiteBtnActive]}
+                onPress={() => onStatusChange("En Sitio")}
+              >
+                <Text style={styles.onSiteBtnActiveText}>En Sitio</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.tripActionButton, styles.completeBtnActive]}
+              onPress={() => onStatusChange("Completado")}
+            >
+              <Text style={styles.completeBtnActiveText}>Finalizar</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   tripCard: {
     backgroundColor: "#FFFFFF",
@@ -579,5 +739,52 @@ const styles = StyleSheet.create({
   },
   acceptModalButtonText: {
     color: "#FFFFFF",
+  },
+  activeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "rgba(164, 3, 43, 0.12)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cancelBtnActive: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#C62828",
+  },
+  cancelBtnActiveText: {
+    color: "#C62828",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  onSiteBtnActive: {
+    backgroundColor: "#D84315",
+  },
+  onSiteBtnActiveText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  onTheWayBtnActive: {
+    backgroundColor: "#1565C0",
+  },
+  onTheWayBtnActiveText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  completeBtnActive: {
+    backgroundColor: "#2E7D32",
+  },
+  completeBtnActiveText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
