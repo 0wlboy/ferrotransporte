@@ -82,7 +82,10 @@ export default function Profile() {
               activeOpacity={0.8}
             >
               {carFotoUrl ? (
-                <Image source={{ uri: carFotoUrl }} style={styles.carPhotoSmall} />
+                <Image
+                  source={{ uri: carFotoUrl }}
+                  style={styles.carPhotoSmall}
+                />
               ) : (
                 <View style={styles.carPhotoPlaceholderSmall}>
                   <MaterialCommunityIcons name="car" size={20} color="#888" />
@@ -95,24 +98,6 @@ export default function Profile() {
 
         {/* Título */}
         <Text style={styles.headerTitle}>Perfil de Usuario</Text>
-        {user?.role === "Conductor" && (
-          <TouchableOpacity
-            onPress={() => router.push("/edit-car")}
-            activeOpacity={0.8}
-            style={styles.carProfileButton}
-            accessibilityLabel="Perfil del vehículo"
-            accessibilityRole="button"
-          >
-            {car?.foto_url ? (
-              <Image source={{ uri: car.foto_url }} style={styles.carPhoto} />
-            ) : (
-              <View style={styles.carPhotoPlaceholder}>
-                <MaterialCommunityIcons name="account" size={22} color="#888" />
-              </View>
-            )}
-            <Text>Vehiculo</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* ── CUERPO CON TARJETA DESLIZABLE ── */}

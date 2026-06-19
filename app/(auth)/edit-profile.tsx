@@ -9,6 +9,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
+import SuccessModal from "@/components/modals/success-modal";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -80,6 +81,7 @@ export default function EditProfile() {
   );
 
   // ── Estado del formulario (pre-rellenado con datos actuales) ──
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [profileImage, setProfileImage] = useState<PickedImage | null>(null);
   const [nombre, setNombre] = useState(original.primer_nombre);
   const [apellido, setApellido] = useState(original.apellido);
@@ -244,11 +246,7 @@ export default function EditProfile() {
     if (result?.error) {
       setGeneralError(result.error);
     } else {
-      Alert.alert(
-        "¡Perfil actualizado!",
-        "Los cambios se guardaron correctamente.",
-        [{ text: "Aceptar", onPress: () => router.back() }],
-      );
+      setShowSuccessModal(true);
     }
   };
 
@@ -482,6 +480,15 @@ export default function EditProfile() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <SuccessModal
+        visible={showSuccessModal}
+        title="¡Perfil actualizado!"
+        message="Los cambios se guardaron correctamente."
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.back();
+        }}
+      />
     </SafeAreaView>
   );
 }

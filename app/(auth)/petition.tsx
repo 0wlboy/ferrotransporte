@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { LocationData, useGetLocations } from "@/hooks/useGetLocations";
 import React, { useEffect, useMemo, useState } from "react";
+import SuccessModal from "@/components/modals/success-modal";
 import {
   ActivityIndicator,
   Alert,
@@ -160,6 +161,7 @@ function LocationDropdown({
 export default function Petition() {
   const { sendPetition, isLoading } = useSendPetition();
   const { user } = useAuth();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const { locations, isLoading: isLoadingLocations } = useGetLocations();
 
@@ -227,9 +229,7 @@ export default function Petition() {
     });
 
     if (success) {
-      Alert.alert("Éxito", "Tu petición fue enviada correctamente.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      setShowSuccessModal(true);
     } else {
       Alert.alert("Error", "No se pudo enviar la petición. Intenta de nuevo.");
     }
@@ -371,6 +371,15 @@ export default function Petition() {
           </>
         )}
       </ScrollView>
+      <SuccessModal
+        visible={showSuccessModal}
+        title="¡Petición enviada!"
+        message="Tu petición fue enviada correctamente."
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace("/(auth)/home");
+        }}
+      />
     </View>
   );
 }

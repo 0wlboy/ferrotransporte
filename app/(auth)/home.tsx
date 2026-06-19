@@ -12,6 +12,7 @@ import { useChangePetitionStatus } from "@/hooks/useChangePetitionStatus";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import React, { useState } from "react";
+import SuccessModal from "@/components/modals/success-modal";
 import {
   Image,
   ScrollView,
@@ -107,6 +108,7 @@ export default function Home() {
   const { changePetitionStatus } = useChangePetitionStatus();
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
 
   const greeting = getGreeting();
   const primer_nombre = user?.primer_nombre || "Usuario";
@@ -193,7 +195,11 @@ export default function Home() {
                 status: newStatus,
               });
               await refetch();
-              Alert.alert("Éxito", `El estado del viaje ha sido actualizado a "${newStatus}".`);
+              if (newStatus === "Completado") {
+                setShowSuccessModal(true);
+              } else {
+                Alert.alert("Éxito", `El estado del viaje ha sido actualizado a "${newStatus}".`);
+              }
             } catch (err) {
               console.error("Error al actualizar estado del viaje:", err);
               Alert.alert("Error", "No se pudo actualizar el estado del viaje. Intente de nuevo.");
@@ -360,6 +366,13 @@ export default function Home() {
           setSelectedTrip(null);
         }}
         data={selectedTrip}
+        viewerRole={user?.role as any}
+      />
+      <SuccessModal
+        visible={showSuccessModal}
+        title="¡Viaje Finalizado!"
+        message="El viaje ha sido completado y registrado con éxito."
+        onClose={() => setShowSuccessModal(false)}
       />
     </View>
   );

@@ -1,10 +1,20 @@
 import { CarProvider } from "@/context/car-context";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import React from "react";
+import { useAuth } from "@/context/auth-context";
 
 export default function TabLayout() {
+  const { isAuthenticated, isInitializing } = useAuth();
   usePushNotifications();
+
+  if (isInitializing) {
+    return null; // O un indicador de carga si se prefiere
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <CarProvider>

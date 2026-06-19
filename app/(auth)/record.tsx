@@ -227,6 +227,7 @@ export default function RecordScreen() {
           setSelectedTrip(null);
         }}
         data={selectedTrip}
+        viewerRole={user?.role as any}
       />
     </SafeAreaView>
   );

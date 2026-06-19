@@ -1,7 +1,14 @@
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
-import { Image, StyleSheet, Text, View, TouchableOpacity, Modal } from "react-native";
+import {
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export interface TripRecord {
   id: string;
@@ -22,7 +29,12 @@ export interface TripRecord {
 }
 
 export type TripPriority = "Media" | "Alta";
-export type TripStatus = "Completado" | "Cancelado" | "En Camino" | "Pendiente" | "En Sitio";
+export type TripStatus =
+  | "Completado"
+  | "Cancelado"
+  | "En Camino"
+  | "Pendiente"
+  | "En Sitio";
 
 function getPrioridadColor(estado: TripPriority): string {
   switch (estado) {
@@ -104,14 +116,18 @@ export function PetitionCardSmall({
             {viewerRole === "Conductor" && (
               <View>
                 <Text style={styles.tripUserLabel}>Pasajero</Text>
-                <Text style={styles.tripUserName}>{data.userNombre || data.conductorNombre}</Text>
+                <Text style={styles.tripUserName}>
+                  {data.userNombre || data.conductorNombre}
+                </Text>
               </View>
             )}
 
             {viewerRole === "Pasajero" && (
               <View>
                 <Text style={styles.tripUserLabel}>Conductor</Text>
-                <Text style={styles.tripUserName}>{data.userNombre || data.conductorNombre}</Text>
+                <Text style={styles.tripUserName}>
+                  {data.userNombre || data.conductorNombre}
+                </Text>
               </View>
             )}
 
@@ -122,7 +138,9 @@ export function PetitionCardSmall({
               </View>
               <View style={styles.tripInfoRow}>
                 <Text style={styles.tripInfoLabel}>Carga: </Text>
-                <Text style={styles.tripInfoData}>{data.carga || "Sin carga"}</Text>
+                <Text style={styles.tripInfoData}>
+                  {data.carga || "Sin carga"}
+                </Text>
               </View>
             </View>
           </View>
@@ -160,10 +178,13 @@ export function PetitionCardSmall({
             {data.hora}
           </Text>
           <View style={styles.priorityContainer}>
-            <Text style={styles.tripPriorityLabel}>
-              Prioridad:
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: prioridadColor, marginLeft: 4 }]}>
+            <Text style={styles.tripPriorityLabel}>Prioridad:</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: prioridadColor, marginLeft: 4 },
+              ]}
+            >
               <Text style={styles.statusBadgeText}>{data.prioridad}</Text>
             </View>
           </View>
@@ -178,6 +199,7 @@ export interface PetitionCardBigProps {
   onClose: () => void;
   data: TripRecord | null;
   onAccept?: () => void;
+  viewerRole: string;
 }
 
 export function PetitionCardBig({
@@ -185,11 +207,11 @@ export function PetitionCardBig({
   onClose,
   data,
   onAccept,
+  viewerRole,
 }: PetitionCardBigProps) {
   if (!data) return null;
 
-  const isPending = data.estado === "Pendiente";
-  const labelText = isPending ? "Usuario:" : "Conductor:";
+  const labelText = viewerRole === "Conductor" ? "Conductor:" : "Pasajero:";
 
   return (
     <Modal
@@ -211,7 +233,11 @@ export function PetitionCardBig({
                 />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <MaterialCommunityIcons name="account" size={28} color="#888" />
+                  <MaterialCommunityIcons
+                    name="account"
+                    size={28}
+                    color="#888"
+                  />
                 </View>
               )}
             </View>
@@ -222,12 +248,16 @@ export function PetitionCardBig({
               <Text style={styles.tripConductorName}>
                 {data.conductorNombre || data.userNombre}
               </Text>
-              <View style={styles.infoRow}>
+              <View style={{ marginTop: 4 }}>
                 <Text style={styles.infoText}>
-                  Acomp.: <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
+                  Acomp.:{" "}
+                  <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
                 </Text>
-                <Text style={styles.infoText}>
-                  {"  "}Carga: <Text style={styles.infoValue}>{data.carga ?? "Ninguna"}</Text>
+                <Text style={[styles.infoText, { marginTop: 2 }]}>
+                  Carga:{" "}
+                  <Text style={styles.infoValue}>
+                    {data.carga ?? "Ninguna"}
+                  </Text>
                 </Text>
               </View>
             </View>
@@ -303,7 +333,10 @@ export function PetitionCardBig({
               onPress={onClose}
             >
               <Text
-                style={[styles.tripActionButtonText, styles.closeModalButtonText]}
+                style={[
+                  styles.tripActionButtonText,
+                  styles.closeModalButtonText,
+                ]}
               >
                 Cerrar
               </Text>
@@ -341,8 +374,7 @@ export function ActiveTripCard({
 }) {
   if (!data) return null;
 
-  const isConductor = viewerRole === "Conductor";
-  const labelText = isConductor ? "Usuario:" : "Conductor:";
+  const labelText = viewerRole === "Conductor" ? "Conductor:" : "Pasajero:";
 
   // Get name and photo of the other party
   const displayName = data.userNombre || data.conductorNombre || "Por asignar";
@@ -355,10 +387,7 @@ export function ActiveTripCard({
         {/* Avatar del conductor/usuario */}
         <View style={[styles.avatarContainer, styles.avatarContainerBig]}>
           {displayFoto ? (
-            <Image
-              source={{ uri: displayFoto }}
-              style={styles.avatar}
-            />
+            <Image source={{ uri: displayFoto }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <MaterialCommunityIcons name="account" size={28} color="#888" />
@@ -369,15 +398,15 @@ export function ActiveTripCard({
         {/* Nombre del conductor/usuario */}
         <View style={styles.tripConductorInfo}>
           <Text style={styles.tripConductorLabel}>{labelText}</Text>
-          <Text style={styles.tripConductorName}>
-            {displayName}
-          </Text>
+          <Text style={styles.tripConductorName}>{displayName}</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoText}>
-              Acomp.: <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
+              Acomp.:{" "}
+              <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
             </Text>
             <Text style={styles.infoText}>
-              {"  "}Carga: <Text style={styles.infoValue}>{data.carga ?? "Ninguna"}</Text>
+              {"  "}Carga:{" "}
+              <Text style={styles.infoValue}>{data.carga ?? "Ninguna"}</Text>
             </Text>
           </View>
         </View>
@@ -732,7 +761,7 @@ const styles = StyleSheet.create({
   closeModalButton: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: Colors.light.tint,
   },
   closeModalButtonText: {
     color: Colors.light.tint,

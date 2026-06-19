@@ -717,7 +717,7 @@ export function AuthProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   // ───────────────────────────────────────────────────────────────────────
   // UTILIDADES

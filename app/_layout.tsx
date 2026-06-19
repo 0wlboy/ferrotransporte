@@ -64,6 +64,9 @@ export default function RootLayout() {
     <AuthProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <Stack>
+          {/* Pantalla de redirección inicial / guard de autenticación */}
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+
           {/* Pantalla de inicio de sesión (sin header) */}
           <Stack.Screen name="login" options={{ headerShown: false }} />
 

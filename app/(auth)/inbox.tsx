@@ -266,6 +266,7 @@ export default function Inbox() {
         }}
         data={selectedTrip}
         onAccept={handleAccept}
+        viewerRole={user?.role as any}
       />
     </SafeAreaView>
   );
