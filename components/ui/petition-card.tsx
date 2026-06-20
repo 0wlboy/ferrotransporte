@@ -36,21 +36,10 @@ export type TripStatus =
   | "Pendiente"
   | "En Sitio";
 
-function getPrioridadColor(estado: TripPriority): string {
-  switch (estado) {
-    case "Media":
-      return "#2E7D32";
-    case "Alta":
-      return "#C62828";
-    default:
-      return "#757575";
-  }
-}
-
 function getStatusColor(estado: TripStatus): string {
   switch (estado) {
     case "Completado":
-      return "#2E7D32";
+      return "#adc9afff";
     case "Cancelado":
       return "#C62828";
     case "En Camino":
@@ -65,16 +54,11 @@ function getStatusColor(estado: TripStatus): string {
 }
 
 function getPriorityColor(prioridad?: string): string {
-  switch (prioridad?.toLowerCase()) {
-    case "alta":
+  switch (prioridad) {
+    case "Alta":
       return "#C62828";
-    case "mediana":
-    case "media":
-      return "#E65100";
-    case "baja":
-      return "#2E7D32";
     default:
-      return "#E65100";
+      return "#B8400A";
   }
 }
 
@@ -87,7 +71,8 @@ export function PetitionCardSmall({
   viewerRole: "Conductor" | "Pasajero";
   onPress?: () => void;
 }) {
-  const prioridadColor = getPrioridadColor(data.prioridad);
+  const prioritColor = getPriorityColor(data.prioridad);
+  const labelUser = viewerRole === "Conductor" ? "Pasajero" : "Conductor";
   return (
     <>
       <TouchableOpacity
@@ -97,7 +82,7 @@ export function PetitionCardSmall({
         activeOpacity={0.8}
       >
         {/* Fila superior: foto + nombre + origen/destino */}
-        <View style={styles.tripCardTop}>
+        <View style={[styles.tripCardTop, { alignItems: "flex-start" }]}>
           {/* Avatar del conductor/usuario */}
           <View style={styles.avatarContainer}>
             {data.userFoto || data.conductorFoto ? (
@@ -113,30 +98,17 @@ export function PetitionCardSmall({
           </View>
 
           <View style={styles.tripUserInfo}>
-            {viewerRole === "Conductor" && (
-              <View>
-                <Text style={styles.tripUserLabel}>Pasajero</Text>
-                <Text style={styles.tripUserName}>
-                  {data.userNombre || data.conductorNombre}
-                </Text>
-              </View>
-            )}
-
-            {viewerRole === "Pasajero" && (
-              <View>
-                <Text style={styles.tripUserLabel}>Conductor</Text>
-                <Text style={styles.tripUserName}>
-                  {data.userNombre || data.conductorNombre}
-                </Text>
-              </View>
-            )}
+            <View>
+              <Text style={styles.tripUserLabel}>{labelUser}:</Text>
+              <Text style={styles.tripUserName}>{data.userNombre}</Text>
+            </View>
 
             <View style={styles.tripPetitionInfoContainer}>
               <View style={styles.tripInfoRow}>
                 <Text style={styles.tripInfoLabel}>Acompañantes: </Text>
                 <Text style={styles.tripInfoData}>{data.acompañantes}</Text>
               </View>
-              <View style={styles.tripInfoRow}>
+              <View style={styles.tripInfoColumn}>
                 <Text style={styles.tripInfoLabel}>Carga: </Text>
                 <Text
                   style={styles.tripInfoData}
@@ -152,41 +124,38 @@ export function PetitionCardSmall({
           {/* Origen → Destino */}
           <View style={styles.tripRoute}>
             <View style={styles.tripRouteRow}>
-              <Text style={styles.tripRouteLabel}>Origen </Text>
               <Text style={styles.tripRouteValue}>{data.origen}</Text>
             </View>
             <View style={styles.tripArrowRow}>
               <MaterialCommunityIcons
                 name="arrow-down"
-                size={14}
+                size={18}
                 color={Colors.light.tint}
                 style={styles.tripArrowIcon}
               />
             </View>
             <View style={styles.tripRouteRow}>
-              <Text style={styles.tripRouteLabel}>Destino </Text>
               <Text style={styles.tripRouteValue}>{data.destino}</Text>
             </View>
           </View>
         </View>
 
-        {/* Separador */}
-        <View style={styles.tripDivider} />
-
         {/* Fila inferior: fecha + prioridad */}
         <View style={styles.tripCardBottom}>
-          <Text style={styles.tripDateLabel}>Fecha: </Text>
-          <Text style={styles.tripDateText}>
-            {data.fecha}
-            {"  "}
-            {data.hora}
-          </Text>
+          <View style={styles.dateContainer}>
+            <Text style={styles.tripDateLabel}>Fecha: </Text>
+            <Text style={styles.tripDateText}>
+              {data.fecha}
+              {"  "}
+              {data.hora}
+            </Text>
+          </View>
           <View style={styles.priorityContainer}>
-            <Text style={styles.tripPriorityLabel}>Prioridad:</Text>
+            <Text style={styles.tripPriorityLabel}>Prioridad: </Text>
             <View
               style={[
                 styles.statusBadge,
-                { backgroundColor: prioridadColor, marginLeft: 4 },
+                { backgroundColor: prioritColor, marginLeft: 4 },
               ]}
             >
               <Text style={styles.statusBadgeText}>{data.prioridad}</Text>
@@ -225,11 +194,16 @@ export function PetitionCardBig({
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
+        <View
+          style={[
+            styles.tripCard,
+            { width: "90%", maxWidth: 400, elevation: 5 },
+          ]}
+        >
           {/* Fila superior: foto + nombre + origen/destino */}
-          <View style={styles.tripCardTop}>
+          <View style={[styles.tripCardTop, { alignItems: "flex-start" }]}>
             {/* Avatar del conductor/usuario */}
-            <View style={[styles.avatarContainer, styles.avatarContainerBig]}>
+            <View style={styles.avatarContainer}>
               {data.conductorFoto || data.userFoto ? (
                 <Image
                   source={{ uri: data.conductorFoto || data.userFoto }}
@@ -247,23 +221,19 @@ export function PetitionCardBig({
             </View>
 
             {/* Nombre del conductor/usuario */}
-            <View style={styles.tripConductorInfo}>
-              <Text style={styles.tripConductorLabel}>{labelText}</Text>
-              <Text style={styles.modalConductorName}>
-                {data.conductorNombre || data.userNombre}
-              </Text>
-              <View style={{ marginTop: 4 }}>
-                <Text style={[styles.infoText, { fontSize: 10 }]}>
-                  Acomp.:{" "}
-                  <Text style={styles.modalInfoValue}>
+            <View style={styles.tripUserInfo}>
+              <Text style={styles.tripUserLabel}>{labelText}</Text>
+              <Text style={styles.tripUserName}>{data.userNombre}</Text>
+              <View style={styles.tripPetitionInfoContainer}>
+                <View style={styles.tripInfoRow}>
+                  <Text style={styles.tripInfoLabel}>Acompañantes: </Text>
+                  <Text style={styles.tripInfoData}>
                     {data.acompañantes ?? 0}
                   </Text>
-                </Text>
-                <View style={{ marginTop: 2 }}>
-                  <Text style={[styles.infoText, { fontSize: 10 }]}>
-                    Carga:
-                  </Text>
-                  <Text style={[styles.modalInfoValue, { fontSize: 10, marginTop: 1 }]}>
+                </View>
+                <View style={styles.tripInfoColumn}>
+                  <Text style={styles.tripInfoLabel}>Carga: </Text>
+                  <Text style={styles.tripInfoData}>
                     {data.carga ?? "Ninguna"}
                   </Text>
                 </View>
@@ -273,36 +243,34 @@ export function PetitionCardBig({
             {/* Origen → Destino */}
             <View style={styles.tripRoute}>
               <View style={styles.tripRouteRow}>
-                <Text style={styles.tripRouteLabel}>Origen </Text>
-                <Text style={styles.modalRouteValue}>{data.origen}</Text>
+                <Text style={styles.tripRouteValue}>{data.origen}</Text>
               </View>
               <View style={styles.tripArrowRow}>
                 <MaterialCommunityIcons
                   name="arrow-down"
-                  size={14}
+                  size={18}
                   color={Colors.light.tint}
                   style={styles.tripArrowIcon}
                 />
               </View>
               <View style={styles.tripRouteRow}>
-                <Text style={styles.tripRouteLabel}>Destino </Text>
-                <Text style={styles.modalRouteValue}>{data.destino}</Text>
+                <Text style={styles.tripRouteValue}>{data.destino}</Text>
               </View>
             </View>
           </View>
 
-          {/* Separador */}
-          <View style={styles.tripDivider} />
-
           {/* Fila inferior: fecha + prioridad */}
           <View style={styles.tripCardBottom}>
-            <Text style={styles.tripDateText}>
-              Fecha: {data.fecha}
-              {"  "}
-              {data.hora}
-            </Text>
+            <View style={styles.dateContainer}>
+              <Text style={styles.tripDateLabel}>Fecha: </Text>
+              <Text style={styles.tripDateText}>
+                {data.fecha}
+                {"  "}
+                {data.hora}
+              </Text>
+            </View>
             <View style={styles.priorityContainer}>
-              <Text style={styles.priorityLabel}>Prioridad: </Text>
+              <Text style={styles.tripPriorityLabel}>Prioridad: </Text>
               <View
                 style={[
                   styles.statusBadge,
@@ -375,10 +343,12 @@ export function ActiveTripCard({
   data,
   viewerRole,
   onStatusChange,
+  disabled,
 }: {
   data: TripRecord;
   viewerRole: "Conductor" | "Pasajero";
   onStatusChange: (status: string) => Promise<void>;
+  disabled?: boolean;
 }) {
   if (!data) return null;
 
@@ -389,11 +359,16 @@ export function ActiveTripCard({
   const displayFoto = data.userFoto || data.conductorFoto;
 
   return (
-    <View style={styles.activeCard}>
+    <View
+      style={[
+        styles.tripCard,
+        { marginBottom: 16, elevation: 3, borderColor: Colors.light.tint },
+      ]}
+    >
       {/* Fila superior: foto + nombre + origen/destino */}
-      <View style={styles.tripCardTop}>
+      <View style={[styles.tripCardTop, { alignItems: "flex-start" }]}>
         {/* Avatar del conductor/usuario */}
-        <View style={[styles.avatarContainer, styles.avatarContainerBig]}>
+        <View style={styles.avatarContainer}>
           {displayFoto ? (
             <Image source={{ uri: displayFoto }} style={styles.avatar} />
           ) : (
@@ -404,54 +379,52 @@ export function ActiveTripCard({
         </View>
 
         {/* Nombre del conductor/usuario */}
-        <View style={styles.tripConductorInfo}>
-          <Text style={styles.tripConductorLabel}>{labelText}</Text>
-          <Text style={styles.tripConductorName}>{displayName}</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoText}>
-              Acomp.:{" "}
-              <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
-            </Text>
-            <Text style={styles.infoText}>
-              {"  "}Carga:{" "}
-              <Text style={styles.infoValue}>{data.carga ?? "Ninguna"}</Text>
-            </Text>
+        <View style={styles.tripUserInfo}>
+          <Text style={styles.tripUserLabel}>{labelText}</Text>
+          <Text style={styles.tripUserName}>{displayName}</Text>
+          <View style={styles.tripPetitionInfoContainer}>
+            <View style={styles.tripInfoRow}>
+              <Text style={styles.tripInfoLabel}>Acompañantes: </Text>
+              <Text style={styles.tripInfoData}>{data.acompañantes ?? 0}</Text>
+            </View>
+            <View style={styles.tripInfoColumn}>
+              <Text style={styles.tripInfoLabel}>Carga: </Text>
+              <Text style={styles.tripInfoData}>{data.carga || "Ninguna"}</Text>
+            </View>
           </View>
         </View>
 
         {/* Origen → Destino */}
         <View style={styles.tripRoute}>
           <View style={styles.tripRouteRow}>
-            <Text style={styles.tripRouteLabel}>Origen </Text>
             <Text style={styles.tripRouteValue}>{data.origen}</Text>
           </View>
           <View style={styles.tripArrowRow}>
             <MaterialCommunityIcons
               name="arrow-down"
-              size={14}
+              size={18}
               color={Colors.light.tint}
               style={styles.tripArrowIcon}
             />
           </View>
           <View style={styles.tripRouteRow}>
-            <Text style={styles.tripRouteLabel}>Destino </Text>
             <Text style={styles.tripRouteValue}>{data.destino}</Text>
           </View>
         </View>
       </View>
 
-      {/* Separador */}
-      <View style={styles.tripDivider} />
-
       {/* Fila inferior: fecha + estado */}
       <View style={styles.tripCardBottom}>
-        <Text style={styles.tripDateText}>
-          Fecha: {data.fecha}
-          {"  "}
-          {data.hora}
-        </Text>
+        <View style={styles.dateContainer}>
+          <Text style={styles.tripDateLabel}>Fecha: </Text>
+          <Text style={styles.tripDateText}>
+            {data.fecha}
+            {"  "}
+            {data.hora}
+          </Text>
+        </View>
         <View style={styles.priorityContainer}>
-          <Text style={styles.priorityLabel}>Estado: </Text>
+          <Text style={styles.tripPriorityLabel}>Estado: </Text>
           <View
             style={[
               styles.statusBadge,
@@ -482,39 +455,64 @@ export function ActiveTripCard({
       <View style={styles.tripActionsContainer}>
         {viewerRole === "Pasajero" ? (
           <TouchableOpacity
-            style={[styles.tripActionButton, styles.cancelBtnActive]}
+            style={[
+              styles.tripActionButton,
+              styles.cancelBtnActive,
+              disabled && { opacity: 0.5 },
+            ]}
             onPress={() => onStatusChange("Cancelado")}
+            disabled={disabled}
           >
             <Text style={styles.cancelBtnActiveText}>Cancelar</Text>
           </TouchableOpacity>
         ) : (
           <>
             <TouchableOpacity
-              style={[styles.tripActionButton, styles.cancelBtnActive]}
+              style={[
+                styles.tripActionButton,
+                styles.cancelBtnActive,
+                disabled && { opacity: 0.5 },
+              ]}
               onPress={() => onStatusChange("Cancelado")}
+              disabled={disabled}
             >
               <Text style={styles.cancelBtnActiveText}>Cancelar</Text>
             </TouchableOpacity>
 
             {data.estado === "En Sitio" ? (
               <TouchableOpacity
-                style={[styles.tripActionButton, styles.onTheWayBtnActive]}
+                style={[
+                  styles.tripActionButton,
+                  styles.onTheWayBtnActive,
+                  disabled && { opacity: 0.5 },
+                ]}
                 onPress={() => onStatusChange("En Camino")}
+                disabled={disabled}
               >
                 <Text style={styles.onTheWayBtnActiveText}>En Camino</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.tripActionButton, styles.onSiteBtnActive]}
+                style={[
+                  styles.tripActionButton,
+                  styles.onSiteBtnActive,
+                  disabled && { opacity: 0.5 },
+                ]}
                 onPress={() => onStatusChange("En Sitio")}
+                disabled={disabled}
               >
                 <Text style={styles.onSiteBtnActiveText}>En Sitio</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity
-              style={[styles.tripActionButton, styles.completeBtnActive]}
+              style={[
+                styles.tripActionButton,
+                styles.completeBtnActive,
+                disabled && { opacity: 0.5 },
+              ]}
               onPress={() => onStatusChange("Completado")}
+              disabled={disabled}
             >
               <Text style={styles.completeBtnActiveText}>Finalizar</Text>
             </TouchableOpacity>
@@ -528,11 +526,11 @@ export function ActiveTripCard({
 const styles = StyleSheet.create({
   tripCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderWidth: 1.5,
+    borderColor: "transparent",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -542,10 +540,14 @@ const styles = StyleSheet.create({
   tripCardTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   avatarContainer: {
-    marginRight: 4,
+    marginRight: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    borderRadius: 30,
+    padding: 2,
   },
   avatar: {
     width: 52,
@@ -569,20 +571,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   tripUserName: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1A1A1A",
-  },
-  tripConductorInfo: {
-    flex: 1,
-  },
-  tripConductorLabel: {
     fontSize: 11,
-    color: "#888",
-    marginBottom: 2,
-  },
-  tripConductorName: {
-    fontSize: 10,
     fontWeight: "700",
     color: "#1A1A1A",
   },
@@ -596,14 +585,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  tripInfoColumn: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+  },
   tripInfoLabel: {
-    fontSize: 11,
-    color: "#888",
+    fontSize: 10,
+    color: "#1A1A1A",
   },
   tripInfoData: {
     fontSize: 11,
     fontWeight: "700",
     color: Colors.light.tint,
+    minWidth: 120,
   },
   tripRoute: {
     alignItems: "flex-end",
@@ -615,16 +609,17 @@ const styles = StyleSheet.create({
   },
   tripRouteLabel: {
     fontSize: 10,
-    color: "#888",
+    color: "#757575",
   },
   tripRouteValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     color: "#1A1A1A",
   },
   tripArrowRow: {
     alignItems: "flex-end",
-    paddingRight: 2,
+    paddingRight: 12,
+    marginVertical: 2,
   },
   tripArrowIcon: {
     marginVertical: -2,
@@ -642,14 +637,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginTop: 14,
+  },
+  dateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   tripDateLabel: {
     fontSize: 10,
-    color: "#888",
+    color: "#1A1A1A",
   },
   tripDateText: {
-    fontSize: 12,
-    color: "#555",
+    fontSize: 11,
+    color: "#000",
+    fontWeight: "700",
   },
   priorityContainer: {
     flexDirection: "row",
@@ -657,17 +658,17 @@ const styles = StyleSheet.create({
   },
   tripPriorityLabel: {
     fontSize: 10,
-    color: "#888",
+    color: "#757575",
     fontWeight: "400",
   },
   statusBadge: {
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
   statusBadgeText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
 
@@ -676,7 +677,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   tripDescriptionLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: "#888",
     marginBottom: 4,
   },
@@ -688,9 +689,9 @@ const styles = StyleSheet.create({
     borderColor: "#E8E8E8",
   },
   descriptionText: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#333",
-    lineHeight: 18,
+    lineHeight: 16,
   },
 
   // ── Botones de acción ─────────────────────────────────────────────────────
@@ -726,61 +727,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modalCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
-    width: "90%",
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  avatarContainerBig: {
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    borderRadius: 28,
-    padding: 2,
-  },
-  infoRow: {
-    flexDirection: "row",
-    marginTop: 4,
-  },
-  infoText: {
-    fontSize: 11,
-    color: "#555",
-  },
-  infoValue: {
-    fontWeight: "700",
-    color: Colors.light.tint,
-  },
-  modalConductorName: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#1A1A1A",
-  },
-  modalRouteValue: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#1A1A1A",
-  },
-  modalInfoValue: {
-    fontWeight: "700",
-    color: Colors.light.tint,
-    fontSize: 10,
-  },
-  priorityContainerBig: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  priorityLabel: {
-    fontSize: 12,
-    color: "#555",
-  },
   closeModalButton: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
@@ -791,19 +737,6 @@ const styles = StyleSheet.create({
   },
   acceptModalButtonText: {
     color: "#FFFFFF",
-  },
-  activeCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(164, 3, 43, 0.12)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 3,
   },
   cancelBtnActive: {
     backgroundColor: "#FFFFFF",

@@ -13,6 +13,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import SuccessModal from "@/components/modals/success-modal";
+import CancelModal from "@/components/modals/cancel-modal";
 import {
   Image,
   ScrollView,
@@ -109,6 +110,7 @@ export default function Home() {
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
 
   const greeting = getGreeting();
   const primer_nombre = user?.primer_nombre || "Usuario";
@@ -171,19 +173,33 @@ export default function Home() {
     (p) => p.estado !== "Completado" && p.estado !== "Cancelado"
   );
 
+  const handleCancelTrip = async () => {
+    if (!activeTrip) return;
+    try {
+      await changePetitionStatus({
+        petitionId: activeTrip.id,
+        status: "Cancelado",
+      });
+      setShowCancelModal(false);
+      await refetch();
+      Alert.alert("Éxito", "El viaje ha sido cancelado.");
+    } catch (err) {
+      console.error("Error al cancelar el viaje:", err);
+      Alert.alert("Error", "No se pudo cancelar el viaje. Intente de nuevo.");
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!activeTrip) return;
 
-    let title = "Confirmar acción";
-    let message = `¿Estás seguro de que deseas cambiar el estado a "${newStatus}"?`;
     if (newStatus === "Cancelado") {
-      title = "Cancelar Viaje";
-      message = "¿Estás seguro de que deseas cancelar este viaje?";
+      setShowCancelModal(true);
+      return;
     }
 
     Alert.alert(
-      title,
-      message,
+      "Confirmar acción",
+      `¿Estás seguro de que deseas cambiar el estado a "${newStatus}"?`,
       [
         { text: "No", style: "cancel" },
         {
@@ -227,9 +243,10 @@ export default function Home() {
 
         {/* Botón de perfil */}
         <TouchableOpacity
-          style={styles.profileButton}
+          style={[styles.profileButton, isLoading && { opacity: 0.6 }]}
           onPress={() => router.push("/(auth)/profile" as any)}
           activeOpacity={0.8}
+          disabled={isLoading}
         >
           {user?.foto_url ? (
             <Image
@@ -275,6 +292,7 @@ export default function Home() {
               data={activeTrip}
               viewerRole={user?.role as "Conductor" | "Pasajero"}
               onStatusChange={handleStatusChange}
+              disabled={isLoading}
             />
           </View>
         )}
@@ -283,10 +301,10 @@ export default function Home() {
         <TouchableOpacity
           style={[
             styles.actionButton,
-            hasActivePetition && styles.actionButtonDisabled
+            (hasActivePetition || isLoading) && styles.actionButtonDisabled
           ]}
-          activeOpacity={hasActivePetition ? 1 : 0.85}
-          disabled={hasActivePetition}
+          activeOpacity={(hasActivePetition || isLoading) ? 1 : 0.85}
+          disabled={hasActivePetition || isLoading}
           onPress={() => {
             router.push(getActionButton(user?.role ?? null).route as any);
           }}
@@ -295,9 +313,9 @@ export default function Home() {
             name={actionIcon as any}
             size={48}
             color="#FFFFFF"
-            style={[styles.actionIcon, hasActivePetition && styles.actionIconDisabled]}
+            style={[styles.actionIcon, (hasActivePetition || isLoading) && styles.actionIconDisabled]}
           />
-          <Text style={[styles.actionButtonText, hasActivePetition && styles.actionButtonTextDisabled]}>
+          <Text style={[styles.actionButtonText, (hasActivePetition || isLoading) && styles.actionButtonTextDisabled]}>
             {actionLabel}
           </Text>
         </TouchableOpacity>
@@ -348,8 +366,9 @@ export default function Home() {
 
         {/* ── VER MÁS ── */}
         <TouchableOpacity
-          style={styles.verMasButton}
+          style={[styles.verMasButton, isLoading && { opacity: 0.6 }]}
           activeOpacity={0.85}
+          disabled={isLoading}
           onPress={() => {
             router.push("/record");
           }}
@@ -373,6 +392,11 @@ export default function Home() {
         title="¡Viaje Finalizado!"
         message="El viaje ha sido completado y registrado con éxito."
         onClose={() => setShowSuccessModal(false)}
+      />
+      <CancelModal
+        visible={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onCancelTrip={handleCancelTrip}
       />
     </View>
   );

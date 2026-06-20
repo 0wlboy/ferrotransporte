@@ -1,5 +1,6 @@
 import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
 import { PetitionCardBig, PetitionCardSmall, TripRecord, TripPriority } from "@/components/ui/petition-card";
+import SuccessModal from "@/components/modals/success-modal";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useCars } from "@/context/car-context";
@@ -7,7 +8,8 @@ import { useChangePetitionStatus } from "@/hooks/useChangePetitionStatus";
 import { useGetPetition } from "@/hooks/useGetPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useMemo, useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
@@ -32,6 +34,12 @@ export default function Inbox() {
     asignacion: "Pendiente",
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
   const [sortField, setSortField] = useState<SortField>("fecha");
   const [sortDirection, setSortDirection] = useState<SortDirection>("Descendente");
@@ -40,6 +48,7 @@ export default function Inbox() {
   // Modal State for Petition Details
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
 
   const handleAccept = async () => {
     if (!selectedTrip) return;
@@ -62,18 +71,7 @@ export default function Inbox() {
       setShowModal(false);
       setSelectedTrip(null);
       refetch();
-      Alert.alert(
-        "Éxito",
-        "Has aceptado la petición de transporte.",
-        [
-          {
-            text: "Aceptar",
-            onPress: () => {
-              router.replace("/(auth)/home" as any);
-            },
-          },
-        ]
-      );
+      setShowSuccessModal(true);
     } catch (err) {
       console.error("Error al aceptar la petición:", err);
       Alert.alert("Error", "No se pudo aceptar la petición. Intenta de nuevo.");
@@ -137,9 +135,10 @@ export default function Inbox() {
         {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
-            style={styles.orderButton}
+            style={[styles.orderButton, isLoading && { opacity: 0.6 }]}
             onPress={() => setShowSortModal(true)}
             activeOpacity={0.8}
+            disabled={isLoading}
             accessibilityLabel="Abrir opciones de ordenamiento"
             accessibilityRole="button"
           >
@@ -169,6 +168,7 @@ export default function Inbox() {
             <TouchableOpacity
               style={styles.retryButton}
               onPress={refetch}
+              disabled={isLoading}
               activeOpacity={0.8}
             >
               <Text style={styles.retryButtonText}>Reintentar</Text>
@@ -223,7 +223,7 @@ export default function Inbox() {
                 <PetitionCardSmall
                   data={tripData}
                   viewerRole="Conductor"
-                  onPress={() => {
+                  onPress={isLoading ? undefined : () => {
                     setSelectedTrip(tripData);
                     setShowModal(true);
                   }}
@@ -267,6 +267,16 @@ export default function Inbox() {
         data={selectedTrip}
         onAccept={handleAccept}
         viewerRole={user?.role as any}
+      />
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="¡Petición Aceptada!"
+        message="Has aceptado la petición de transporte con éxito."
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace("/(auth)/home" as any);
+        }}
       />
     </SafeAreaView>
   );

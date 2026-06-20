@@ -5,7 +5,8 @@ import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,6 +28,12 @@ export default function RecordScreen() {
     role: user?.role,
     asignacion: "Completado",
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
   const [sortField, setSortField] = useState<SortField>("fecha");
@@ -94,9 +101,10 @@ export default function RecordScreen() {
         {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
-            style={styles.orderButton}
+            style={[styles.orderButton, isLoading && { opacity: 0.6 }]}
             onPress={() => setShowSortModal(true)}
             activeOpacity={0.8}
+            disabled={isLoading}
             accessibilityLabel="Abrir opciones de ordenamiento"
             accessibilityRole="button"
           >
@@ -126,6 +134,7 @@ export default function RecordScreen() {
             <TouchableOpacity
               style={styles.retryButton}
               onPress={refetch}
+              disabled={isLoading}
               activeOpacity={0.8}
             >
               <Text style={styles.retryButtonText}>Reintentar</Text>
@@ -185,7 +194,7 @@ export default function RecordScreen() {
                 <PetitionCardSmall
                   data={tripData}
                   viewerRole={user?.role as "Conductor" | "Pasajero"}
-                  onPress={() => {
+                  onPress={isLoading ? undefined : () => {
                     setSelectedTrip(tripData);
                     setShowModal(true);
                   }}
