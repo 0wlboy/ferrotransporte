@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDACIONES
@@ -43,6 +43,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * - Navegar al home tras autenticación exitosa (manejado por el contexto).
  */
 export default function ResetPassword() {
+  const insets = useSafeAreaInsets();
   // ── Estado del formulario ──
   const [email, setEmail] = useState("");
   // ── Estado de errores locales (validación regex) ──
@@ -109,7 +110,7 @@ export default function ResetPassword() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -168,7 +169,7 @@ export default function ResetPassword() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

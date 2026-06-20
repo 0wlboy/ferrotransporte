@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGEX DE VALIDACIÓN  (solo se aplican si el campo fue modificado)
@@ -63,6 +63,7 @@ const GERENCIAS = [
  * - La imagen se sube a Storage solo si se seleccionó una nueva.
  */
 export default function EditProfile() {
+  const insets = useSafeAreaInsets();
   const { user, updateProfile, isLoading } = useAuth();
 
   // ── Valores originales (referencia para el diff) ──
@@ -255,7 +256,7 @@ export default function EditProfile() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -489,7 +490,7 @@ export default function EditProfile() {
           router.back();
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

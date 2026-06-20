@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDACIONES Y UTILIDADES
@@ -71,6 +71,7 @@ const parseRecoveryParams = (url: string) => {
  * - Mostrar errores dinámicos del servidor bajo los inputs correspondientes.
  */
 export default function ChangePassword() {
+  const insets = useSafeAreaInsets();
   // ── Estado del formulario ──
   const [password, setPassword] = useState("");
   // ── Estado de errores locales (validación regex) ──
@@ -235,7 +236,7 @@ export default function ChangePassword() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -293,7 +294,7 @@ export default function ChangePassword() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

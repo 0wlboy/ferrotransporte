@@ -1,16 +1,18 @@
+import SuccessModal from "@/components/modals/success-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TextArea } from "@/components/ui/text-area";
 import { useAuth } from "@/context/auth-context";
+import { LocationData, useGetLocations } from "@/hooks/useGetLocations";
 import { useSendPetition } from "@/hooks/useSendPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { LocationData, useGetLocations } from "@/hooks/useGetLocations";
 import React, { useEffect, useMemo, useState } from "react";
-import SuccessModal from "@/components/modals/success-modal";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,12 +20,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATOS
 // ─────────────────────────────────────────────────────────────────────────────
-
-
 
 const OpcionesPrioridad = ["Mediana", "Alta"];
 
@@ -111,7 +112,9 @@ function LocationDropdown({
   zIndex = 10,
 }: LocationDropdownProps) {
   const selectedOption = options.find((item) => item.id === selected);
-  const displayLabel = selectedOption ? selectedOption.nombre : "Seleccionar...";
+  const displayLabel = selectedOption
+    ? selectedOption.nombre
+    : "Seleccionar...";
 
   return (
     <View style={[styles.dropdownWrapper, { zIndex }]}>
@@ -159,6 +162,7 @@ function LocationDropdown({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Petition() {
+  const insets = useSafeAreaInsets();
   const { sendPetition, isLoading } = useSendPetition();
   const { user } = useAuth();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -240,7 +244,7 @@ export default function Petition() {
   }, [origen, destino]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor="#A10F2D" />
 
       {/* ── ENCABEZADO ── */}
@@ -258,119 +262,139 @@ export default function Petition() {
         <Text style={styles.headerTitle}>¿A Donde se{"\n"}Dirige?</Text>
       </View>
 
-      {/* ── TARJETA BLANCA ── */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      {/* ── EVITAR TECLADO ── */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        {isLoadingLocations ? (
-          <View style={{ paddingVertical: 40, alignItems: "center", justifyContent: "center" }}>
-            <ActivityIndicator size="large" color="#A10F2D" />
-            <Text style={{ marginTop: 12, color: "#666", fontSize: 14 }}>Cargando localizaciones...</Text>
-          </View>
-        ) : (
-          <>
-            {/* Origen */}
-            <LocationDropdown
-              label="Origen"
-              selected={origen}
-              options={locations}
-              isOpen={showOrigen}
-              onToggle={openOrigen}
-              onSelect={(v) => {
-                setOrigen(v);
-                setShowOrigen(false);
+        {/* ── TARJETA BLANCA ── */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {isLoadingLocations ? (
+            <View
+              style={{
+                paddingVertical: 40,
+                alignItems: "center",
+                justifyContent: "center",
               }}
-              zIndex={30}
-            />
-
-            {/* Separador con flecha */}
-            <View style={styles.arrowSeparator}>
-              <View style={styles.arrowDot} />
-              <View style={styles.arrowDot} />
-              <MaterialCommunityIcons name="arrow-down" size={18} color="#A10F2D" />
+            >
+              <ActivityIndicator size="large" color="#A10F2D" />
+              <Text style={{ marginTop: 12, color: "#666", fontSize: 14 }}>
+                Cargando localizaciones...
+              </Text>
             </View>
+          ) : (
+            <>
+              {/* Origen */}
+              <LocationDropdown
+                label="Origen"
+                selected={origen}
+                options={locations}
+                isOpen={showOrigen}
+                onToggle={openOrigen}
+                onSelect={(v) => {
+                  setOrigen(v);
+                  setShowOrigen(false);
+                }}
+                zIndex={30}
+              />
 
-            {/* Destino */}
-            <LocationDropdown
-              label="Destino"
-              selected={destino}
-              options={locations}
-              isOpen={showDestino}
-              onToggle={openDestino}
-              onSelect={(v) => {
-                setDestino(v);
-                setShowDestino(false);
-              }}
-              zIndex={20}
-            />
+              {/* Separador con flecha */}
+              <View style={styles.arrowSeparator}>
+                <View style={{ alignItems: "center", width: 30, gap: 2 }}>
+                  <MaterialCommunityIcons
+                    name="arrow-down"
+                    size={30}
+                    color="#A10F2D"
+                  />
+                </View>
+              </View>
 
-        {/* Fila: Pasajeros | Prioridad */}
-        <View style={styles.row}>
-          {/* Pasajeros */}
-          <View style={styles.halfLeft}>
-            <Input
-              label="Pasajeros *"
-              placeholder="1"
-              value={pasajeros}
-              onChangeText={(t) => {
-                setPasajeros(t);
-                if (pasajerosError) setPasajerosError("");
-              }}
-              error={pasajerosError}
-              inputMode="numeric"
-              keyboardType="numeric"
-            />
-          </View>
+              {/* Destino */}
+              <LocationDropdown
+                label="Destino"
+                selected={destino}
+                options={locations}
+                isOpen={showDestino}
+                onToggle={openDestino}
+                onSelect={(v) => {
+                  setDestino(v);
+                  setShowDestino(false);
+                }}
+                zIndex={20}
+              />
 
-          {/* Prioridad */}
-          <View style={[styles.halfRight, { zIndex: 10 }]}>
-            <Dropdown
-              label="Prioridad"
-              selected={prioridad}
-              options={OpcionesPrioridad}
-              isOpen={showPrioridad}
-              onToggle={openPrioridad}
-              onSelect={(v) => {
-                setPrioridad(v);
-                setShowPrioridad(false);
-              }}
-              zIndex={10}
-            />
-          </View>
-        </View>
+              {/* Fila: Pasajeros | Prioridad */}
+              <View style={styles.row}>
+                {/* Pasajeros */}
+                <View style={styles.halfLeft}>
+                  <Input
+                    label="Pasajeros *"
+                    placeholder="1"
+                    value={pasajeros}
+                    onChangeText={(t) => {
+                      setPasajeros(t);
+                      if (pasajerosError) setPasajerosError("");
+                    }}
+                    error={pasajerosError}
+                    inputMode="numeric"
+                    keyboardType="numeric"
+                  />
+                </View>
 
-        {/* Carga */}
-        <Input
-          label="Carga"
-          placeholder="1 impresora"
-          value={carga}
-          onChangeText={setCarga}
-        />
+                {/* Prioridad */}
+                <View style={[styles.halfRight, { zIndex: 10 }]}>
+                  <Dropdown
+                    label="Prioridad"
+                    selected={prioridad}
+                    options={OpcionesPrioridad}
+                    isOpen={showPrioridad}
+                    onToggle={openPrioridad}
+                    onSelect={(v) => {
+                      setPrioridad(v);
+                      setShowPrioridad(false);
+                    }}
+                    zIndex={10}
+                  />
+                </View>
+              </View>
 
-        {/* Descripción de la petición */}
-        <TextArea
-          label="Descripcion de la peticion"
-          placeholder="Mantenimiento preventivo en....."
-          value={descripcion}
-          onChangeText={setDescripcion}
-          numberOfLines={5}
-        />
+              {/* Carga */}
+              <Input
+                label="Carga"
+                placeholder="1 impresora"
+                value={carga}
+                onChangeText={setCarga}
+                maxLength={25}
+              />
 
-        {/* Botón Enviar */}
-        <Button
-          title="Enviar"
-          onPress={handleRegister}
-          isLoading={isLoading}
-          disabled={!hasChanges || isLoading}
-          containerStyle={styles.submitButton}
-        />
-          </>
-        )}
-      </ScrollView>
+              {/* Descripción de la petición */}
+              <TextArea
+                label="Descripcion de la peticion"
+                placeholder="Mantenimiento preventivo en....."
+                value={descripcion}
+                onChangeText={setDescripcion}
+                numberOfLines={5}
+              />
+
+              {/* Botón Enviar */}
+              <Button
+                title="Enviar"
+                onPress={handleRegister}
+                isLoading={isLoading}
+                disabled={!hasChanges || isLoading}
+                containerStyle={styles.submitButton}
+              />
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
       <SuccessModal
         visible={showSuccessModal}
         title="¡Petición enviada!"
@@ -398,7 +422,7 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: "#A10F2D",
-    paddingTop: (StatusBar.currentHeight ?? 44) + 12,
+    paddingTop: 12,
     paddingBottom: 28,
     paddingHorizontal: 20,
     gap: 16,
@@ -523,7 +547,7 @@ const styles = StyleSheet.create({
 
   arrowSeparator: {
     alignItems: "flex-end",
-    paddingRight: 14,
+    paddingRight: 16,
     marginVertical: 2,
     gap: 2,
   },

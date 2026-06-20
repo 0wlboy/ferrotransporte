@@ -21,7 +21,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
@@ -37,6 +37,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
  * - La imagen se sube a Storage solo si se seleccionó una nueva.
  */
 export default function EditCar() {
+  const insets = useSafeAreaInsets();
   const { car, updateCar, isLoading, isInitializing } = useCars();
 
   // ── Valores originales (referencia para el diff) ──
@@ -148,9 +149,8 @@ export default function EditCar() {
 
   if (isInitializing) {
     return (
-      <SafeAreaView
-        style={styles.safeContainer}
-        edges={["top", "left", "right"]}
+      <View
+        style={[styles.safeContainer, { paddingTop: insets.top }]}
       >
         <StatusBar style="light" backgroundColor="#A10F2D" />
         <View style={styles.loadingContainer}>
@@ -159,7 +159,7 @@ export default function EditCar() {
             Cargando información del vehículo…
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -169,9 +169,8 @@ export default function EditCar() {
 
   if (!car) {
     return (
-      <SafeAreaView
-        style={styles.safeContainer}
-        edges={["top", "left", "right"]}
+      <View
+        style={[styles.safeContainer, { paddingTop: insets.top }]}
       >
         <StatusBar style="light" backgroundColor="#A10F2D" />
         <View style={styles.loadingContainer}>
@@ -196,7 +195,7 @@ export default function EditCar() {
             No hay vehículo registrado asociado a tu cuenta.
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -205,7 +204,7 @@ export default function EditCar() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right"]}>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -396,7 +395,7 @@ export default function EditCar() {
           router.back();
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

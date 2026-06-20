@@ -138,7 +138,11 @@ export function PetitionCardSmall({
               </View>
               <View style={styles.tripInfoRow}>
                 <Text style={styles.tripInfoLabel}>Carga: </Text>
-                <Text style={styles.tripInfoData}>
+                <Text
+                  style={styles.tripInfoData}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {data.carga || "Sin carga"}
                 </Text>
               </View>
@@ -211,7 +215,7 @@ export function PetitionCardBig({
 }: PetitionCardBigProps) {
   if (!data) return null;
 
-  const labelText = viewerRole === "Conductor" ? "Conductor:" : "Pasajero:";
+  const labelText = viewerRole === "Conductor" ? "Pasajero:" : "Conductor:";
 
   return (
     <Modal
@@ -245,20 +249,24 @@ export function PetitionCardBig({
             {/* Nombre del conductor/usuario */}
             <View style={styles.tripConductorInfo}>
               <Text style={styles.tripConductorLabel}>{labelText}</Text>
-              <Text style={styles.tripConductorName}>
+              <Text style={styles.modalConductorName}>
                 {data.conductorNombre || data.userNombre}
               </Text>
               <View style={{ marginTop: 4 }}>
-                <Text style={styles.infoText}>
+                <Text style={[styles.infoText, { fontSize: 10 }]}>
                   Acomp.:{" "}
-                  <Text style={styles.infoValue}>{data.acompañantes ?? 0}</Text>
-                </Text>
-                <Text style={[styles.infoText, { marginTop: 2 }]}>
-                  Carga:{" "}
-                  <Text style={styles.infoValue}>
-                    {data.carga ?? "Ninguna"}
+                  <Text style={styles.modalInfoValue}>
+                    {data.acompañantes ?? 0}
                   </Text>
                 </Text>
+                <View style={{ marginTop: 2 }}>
+                  <Text style={[styles.infoText, { fontSize: 10 }]}>
+                    Carga:
+                  </Text>
+                  <Text style={[styles.modalInfoValue, { fontSize: 10, marginTop: 1 }]}>
+                    {data.carga ?? "Ninguna"}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -266,7 +274,7 @@ export function PetitionCardBig({
             <View style={styles.tripRoute}>
               <View style={styles.tripRouteRow}>
                 <Text style={styles.tripRouteLabel}>Origen </Text>
-                <Text style={styles.tripRouteValue}>{data.origen}</Text>
+                <Text style={styles.modalRouteValue}>{data.origen}</Text>
               </View>
               <View style={styles.tripArrowRow}>
                 <MaterialCommunityIcons
@@ -278,7 +286,7 @@ export function PetitionCardBig({
               </View>
               <View style={styles.tripRouteRow}>
                 <Text style={styles.tripRouteLabel}>Destino </Text>
-                <Text style={styles.tripRouteValue}>{data.destino}</Text>
+                <Text style={styles.modalRouteValue}>{data.destino}</Text>
               </View>
             </View>
           </View>
@@ -574,7 +582,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   tripConductorName: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: "700",
     color: "#1A1A1A",
   },
@@ -749,6 +757,21 @@ const styles = StyleSheet.create({
   infoValue: {
     fontWeight: "700",
     color: Colors.light.tint,
+  },
+  modalConductorName: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  modalRouteValue: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#1A1A1A",
+  },
+  modalInfoValue: {
+    fontWeight: "700",
+    color: Colors.light.tint,
+    fontSize: 10,
   },
   priorityContainerBig: {
     flexDirection: "row",

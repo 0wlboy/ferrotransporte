@@ -19,7 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDACIONES
@@ -69,6 +69,7 @@ const CI_REGEX = /^V-[0-9]{6,8}$/;
  * - La imagen de perfil queda procesada y lista para enviarse a un backend futuro.
  */
 export default function SingIn() {
+  const insets = useSafeAreaInsets();
   // ── Estado del formulario ──
   const [profileImage, setProfileImage] = useState<PickedImage | null>(null);
   const [nombre, setNombre] = useState("");
@@ -259,7 +260,7 @@ export default function SingIn() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -452,7 +453,7 @@ export default function SingIn() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

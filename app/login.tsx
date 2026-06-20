@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VALIDACIONES
@@ -48,6 +48,7 @@ const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
  * - Navegar al home tras autenticación exitosa (manejado por el contexto).
  */
 export default function Login() {
+  const insets = useSafeAreaInsets();
   // ── Estado del formulario ──
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -128,7 +129,7 @@ export default function Login() {
   // ───────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <StatusBar style="light" backgroundColor="#A10F2D" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -224,7 +225,7 @@ export default function Login() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
