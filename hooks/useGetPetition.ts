@@ -64,7 +64,10 @@ export function useGetPetition(
 
     try {
       // ── PASO 1: Obtener todas las peticiones ─────────────────────────────────
-      let query = supabase.from("peticiones").select("*");
+      let query = supabase
+        .from("peticiones")
+        .select("*")
+        .neq("deleted",true);
 
       if (asignacion) {
         query = query.eq("estado", asignacion);

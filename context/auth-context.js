@@ -9,6 +9,9 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Modal, StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Colors } from "@/constants/theme";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS Y DEFINICIONES
@@ -79,6 +82,7 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   const { uploadImage, uploading, error: uploadError } = useUploadImage();
 
@@ -183,6 +187,19 @@ export function AuthProvider({ children }) {
         );
       }
 
+      // Validar si el usuario fue eliminado
+      if (profile && profile.deleted === true) {
+        console.warn(
+          "[AuthContext] Cuenta eliminada detectada para auth_id:",
+          authUser.id,
+        );
+        // Desconectar inmediatamente
+        await supabase.auth.signOut();
+        setUser(null);
+        setShowDeletedModal(true);
+        return { success: false, deleted: true };
+      }
+
       let locatioNombre = null;
       if (profile?.id_gerencia) {
         const { data: locData } = await supabase
@@ -219,8 +236,10 @@ export function AuthProvider({ children }) {
 
       // Guardar en memoria del estado React (no persistido aquí — eso lo hace Supabase)
       setUser(userProfile);
+      return { success: true };
     } catch (err) {
       console.error("[AuthContext] Error inesperado al cargar perfil:", err);
+      return { success: false };
     }
   };
 
@@ -247,7 +266,19 @@ export function AuthProvider({ children }) {
         email: email.trim().toLowerCase(),
         password,
       });
+
+      if (error) {
+        // Mapear mensajes de error de Supabase a español
+        return { error: mapAuthError(error.message) };
+      }
+
       if (data?.user) {
+        // Cargar el perfil del usuario antes de navegar para verificar si la cuenta está eliminada
+        const profileResult = await loadUserProfile(data.user);
+        if (profileResult && profileResult.deleted) {
+          return { error: "Esta cuenta ha sido eliminada." };
+        }
+
         const { error: updateError } = await supabase
           .from("usuarios")
           .update({
@@ -261,19 +292,7 @@ export function AuthProvider({ children }) {
             "[AuthContext] Error al actualizar login:",
             updateError.message,
           );
-          // No bloqueamos el flujo si falla la inserción del perfil extendido,
-          // el usuario ya fue creado en Auth y se puede reintentar el perfil.
         }
-      }
-
-      if (error) {
-        // Mapear mensajes de error de Supabase a español
-        return { error: mapAuthError(error.message) };
-      }
-
-      // Cargar el perfil del usuario antes de navegar para evitar parpadeos en la UI
-      if (data?.user) {
-        await loadUserProfile(data.user);
       }
 
       // Navegar a la pantalla principal de la app
@@ -775,7 +794,41 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>
+      {children}
+      <Modal
+        visible={showDeletedModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeletedModal(false)}
+      >
+        <View style={styles.backdrop}>
+          <View style={styles.card}>
+            <View style={styles.iconCircle}>
+              <MaterialCommunityIcons
+                name="account-remove"
+                size={56}
+                color={Colors.light.tint}
+              />
+            </View>
+
+            <Text style={styles.title}>Cuenta Eliminada</Text>
+
+            <Text style={styles.message}>
+              Esta cuenta ha sido eliminada de nuestro sistema. Si crees que esto es un error, por favor contacta con soporte.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.button}
+              activeOpacity={0.8}
+              onPress={() => setShowDeletedModal(false)}
+            >
+              <Text style={styles.buttonText}>Aceptar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </AuthContext.Provider>
   );
 }
 
@@ -804,3 +857,70 @@ export function useAuth() {
   }
   return context;
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 340,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  iconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "rgba(164, 3, 43, 0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1F1F1F",
+    textAlign: "center",
+    marginBottom: 10,
+    letterSpacing: 0.2,
+  },
+  message: {
+    fontSize: 14,
+    color: "#666666",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 10,
+  },
+  button: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    width: "100%",
+    alignItems: "center",
+    shadowColor: Colors.light.tint,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+});

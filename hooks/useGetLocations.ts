@@ -33,6 +33,7 @@ export function useGetLocations(): UseGetLocationsReturn {
             const { data: localizacionesData, error: localizacionesError } = await supabase
                 .from("localizaciones")
                 .select("id, nombre")
+                .neq("deleted", true)
                 .order("nombre", { ascending: true });
 
             if (localizacionesError) throw new Error(localizacionesError.message);
