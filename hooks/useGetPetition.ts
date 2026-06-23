@@ -189,7 +189,27 @@ export function useGetPetition(
 
   useEffect(() => {
     fetchPetitions();
-  }, [userId, role, asignacion]);
+
+    const channel = supabase
+      .channel("peticiones-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "peticiones",
+        },
+        (payload) => {
+          console.log("[useGetPetition] Cambios detectados en tiempo real:", payload);
+          fetchPetitions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, role, asignacion, fetchPetitions]);
 
   return { petitions, isLoading, error, refetch: fetchPetitions };
 }

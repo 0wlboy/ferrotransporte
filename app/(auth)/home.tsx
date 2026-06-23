@@ -11,9 +11,11 @@ import { useGetPetition } from "@/hooks/useGetPetition";
 import { useChangePetitionStatus } from "@/hooks/useChangePetitionStatus";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import SuccessModal from "@/components/modals/success-modal";
 import CancelModal from "@/components/modals/cancel-modal";
+import CompleteModal from "@/components/modals/complete-modal";
 import {
   Image,
   ScrollView,
@@ -111,6 +113,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
+  const [showCompleteModal, setShowCompleteModal] = useState<boolean>(false);
 
   const greeting = getGreeting();
   const primer_nombre = user?.primer_nombre || "Usuario";
@@ -123,6 +126,12 @@ export default function Home() {
     userId: user?.ci_user,
     role: user?.role,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   // Active trip is any petition where state is not Pendiente, Cancelado, or Completado
   const activeTripData = allPetitions.find(
@@ -189,6 +198,22 @@ export default function Home() {
     }
   };
 
+  const handleCompleteTrip = async () => {
+    if (!activeTrip) return;
+    try {
+      await changePetitionStatus({
+        petitionId: activeTrip.id,
+        status: "Completado",
+      });
+      setShowCompleteModal(false);
+      await refetch();
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error("Error al finalizar el viaje:", err);
+      Alert.alert("Error", "No se pudo finalizar el viaje. Intente de nuevo.");
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!activeTrip) return;
 
@@ -197,33 +222,22 @@ export default function Home() {
       return;
     }
 
-    Alert.alert(
-      "Confirmar acción",
-      `¿Estás seguro de que deseas cambiar el estado a "${newStatus}"?`,
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Sí",
-          onPress: async () => {
-            try {
-              await changePetitionStatus({
-                petitionId: activeTrip.id,
-                status: newStatus,
-              });
-              await refetch();
-              if (newStatus === "Completado") {
-                setShowSuccessModal(true);
-              } else {
-                Alert.alert("Éxito", `El estado del viaje ha sido actualizado a "${newStatus}".`);
-              }
-            } catch (err) {
-              console.error("Error al actualizar estado del viaje:", err);
-              Alert.alert("Error", "No se pudo actualizar el estado del viaje. Intente de nuevo.");
-            }
-          },
-        },
-      ]
-    );
+    if (newStatus === "Completado") {
+      setShowCompleteModal(true);
+      return;
+    }
+
+    // Cambiar estado a "En Sitio" o "En Camino" de forma directa
+    try {
+      await changePetitionStatus({
+        petitionId: activeTrip.id,
+        status: newStatus,
+      });
+      await refetch();
+    } catch (err) {
+      console.error("Error al actualizar estado del viaje:", err);
+      Alert.alert("Error", "No se pudo actualizar el estado del viaje. Intente de nuevo.");
+    }
   };
 
   return (
@@ -397,6 +411,11 @@ export default function Home() {
         visible={showCancelModal}
         onClose={() => setShowCancelModal(false)}
         onCancelTrip={handleCancelTrip}
+      />
+      <CompleteModal
+        visible={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        onCompleteTrip={handleCompleteTrip}
       />
     </View>
   );
