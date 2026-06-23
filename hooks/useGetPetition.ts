@@ -190,8 +190,10 @@ export function useGetPetition(
   useEffect(() => {
     fetchPetitions();
 
+    // Generar un nombre de canal único para evitar colisiones en la suscripción en tiempo real
+    const channelId = `peticiones-changes-${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
-      .channel("peticiones-changes")
+      .channel(channelId)
       .on(
         "postgres_changes",
         {
