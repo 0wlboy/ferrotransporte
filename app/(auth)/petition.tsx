@@ -230,6 +230,7 @@ export default function Petition() {
       pasajeros: numPasajeros,
       prioridad,
       carga,
+      descripcion,
     });
 
     if (success) {

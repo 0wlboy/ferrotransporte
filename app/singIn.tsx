@@ -240,7 +240,7 @@ export default function SingIn() {
     }*/
 
     // ── 2. Registrar usuario en Supabase Auth ──
-    const { emailError: serverEmailError, generalError } = await signUp({
+    const { emailError: serverEmailError, ciError: serverCiError, generalError } = await signUp({
       profileImage,
       email,
       password,
@@ -252,6 +252,7 @@ export default function SingIn() {
     });
 
     if (serverEmailError) setEmailError(serverEmailError);
+    if (serverCiError) setCiError(serverCiError);
     if (generalError) setEmailError(generalError);
   };
 

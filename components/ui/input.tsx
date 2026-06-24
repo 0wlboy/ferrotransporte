@@ -47,6 +47,7 @@ export function Input({
   labelStyle,
   onFocus,
   onBlur,
+  editable = true,
   ...rest
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -59,12 +60,14 @@ export function Input({
   const getLabelColor = () => {
     if (hasError) return '#D32F2F'; // Intense Red
     if (isFocused) return '#A10F2D'; // Deep Brand Crimson
+    if (!editable) return '#8E8E93'; // Muted Grey
     return '#4A4A4A'; // Slate Grey
   };
 
   const getBorderColor = () => {
     if (hasError) return '#D32F2F'; // Intense Red
     if (isFocused) return '#A10F2D'; // Deep Brand Crimson
+    if (!editable) return '#E5E5EA'; // Muted Border
     return '#F5D6DB'; // Light soft pinkish-red
   };
 
@@ -79,13 +82,18 @@ export function Input({
       <View
         style={[
           styles.inputContainer,
-          { borderColor: getBorderColor(), borderWidth: isFocused || hasError ? 1.5 : 1 },
+          { 
+            borderColor: getBorderColor(), 
+            borderWidth: isFocused || hasError ? 1.5 : 1,
+            backgroundColor: editable ? '#FFFFFF' : '#F2F2F7',
+          },
         ]}
       >
         <TextInput
-          style={[styles.input, inputStyle]}
+          style={[styles.input, { color: editable ? '#2E2E2E' : '#8E8E93' }, inputStyle]}
           placeholderTextColor="#A9A9A9"
           secureTextEntry={isSecure}
+          editable={editable}
           onFocus={(e) => {
             setIsFocused(true);
             if (onFocus) onFocus(e);

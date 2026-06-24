@@ -49,9 +49,9 @@ export default function EditCar() {
       numero: car?.num_asientos != null ? String(car.num_asientos) : "",
       año: car?.año != null ? String(car.año) : "",
       estado: car?.estado ?? "",
-      // maletero_amplio es boolean en la BD → convertir a string para el input
+      // maletero_amplio es boolean en la BD → convertir a string ("Sí" / "No") para el input
       maletero_amplio:
-        car?.maletero_amplio != null ? String(car.maletero_amplio) : "",
+        car?.maletero_amplio != null ? (car.maletero_amplio ? "Sí" : "No") : "",
     }),
     // Solo calcular una vez al montar; car ya debería estar cargado
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,6 +114,14 @@ export default function EditCar() {
 
   const handleSave = async () => {
     setGeneralError("");
+    setMaletero_amplioError("");
+
+    // Validar maletero_amplio
+    const maleteroVal = maletero_amplio.trim().toLowerCase();
+    if (maleteroVal !== "" && maleteroVal !== "sí" && maleteroVal !== "si" && maleteroVal !== "no") {
+      setMaletero_amplioError("Por favor ingresa 'Sí' o 'No'");
+      return;
+    }
 
     // Construir payload solo con campos modificados
     const payload: Record<string, unknown> = { profileImage };
@@ -131,8 +139,10 @@ export default function EditCar() {
     if (estado.trim() !== original.estado.trim())
       payload.estado = estado.trim();
     // maletero_amplio es boolean en la BD → convertir de string a boolean
-    if (maletero_amplio.trim() !== original.maletero_amplio.trim())
-      payload.maletero_amplio = maletero_amplio.trim().toLowerCase() === "true";
+    if (maletero_amplio.trim() !== original.maletero_amplio.trim()) {
+      payload.maletero_amplio =
+        maleteroVal === "" ? null : (maleteroVal === "sí" || maleteroVal === "si");
+    }
 
     const result = await updateCar(payload);
 
@@ -316,13 +326,7 @@ export default function EditCar() {
               <View style={styles.halfField}>
                 <Input
                   label="Maletero Amplio"
-                  placeholder={
-                    original.maletero_amplio
-                      ? original.maletero_amplio
-                        ? "Sí"
-                        : "No"
-                      : "Maletero Amplio"
-                  }
+                  placeholder={original.maletero_amplio || "Maletero Amplio"}
                   value={maletero_amplio}
                   onChangeText={(t) => {
                     setMaletero_amplio(t);

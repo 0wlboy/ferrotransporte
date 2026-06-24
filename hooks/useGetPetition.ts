@@ -52,7 +52,9 @@ export interface UseGetPetitionReturn {
 export function useGetPetition(
   options: UseGetPetitionOptions = {},
 ): UseGetPetitionReturn {
+  const hasUserIdFilter = "userId" in options;
   const { userId = null, role = null, asignacion = null } = options;
+  const normalizedUserId = userId ? String(userId).trim() : "";
 
   const [petitions, setPetitions] = useState<PetitionData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -63,20 +65,24 @@ export function useGetPetition(
     setError(null);
 
     try {
+      if (hasUserIdFilter && !normalizedUserId) {
+        setPetitions([]);
+        setIsLoading(false);
+        return;
+      }
+
       // ── PASO 1: Obtener todas las peticiones ─────────────────────────────────
       let query = supabase
         .from("peticiones")
         .select("*")
-        .neq("deleted",true);
+        .neq("deleted", true);
 
       if (asignacion) {
         query = query.eq("estado", asignacion);
       }
 
-      if (userId && role) {
-        const filterCol =
-          role.toLowerCase() === "conductor" ? "ci_driver" : "ci_pasajero";
-        query = query.eq(filterCol, userId);
+      if (hasUserIdFilter) {
+        query = query.or(`ci_pasajero.eq.${normalizedUserId},ci_driver.eq.${normalizedUserId}`);
       }
 
       const { data: peticionesData, error: peticionesError } =
@@ -185,11 +191,11 @@ export function useGetPetition(
     } finally {
       setIsLoading(false);
     }
-  }, [userId, role, asignacion]);
+  }, [normalizedUserId, role, asignacion, hasUserIdFilter]);
 
   useEffect(() => {
     fetchPetitions();
-  }, [userId, role, asignacion]);
+  }, [normalizedUserId, role, asignacion, hasUserIdFilter]);
 
   return { petitions, isLoading, error, refetch: fetchPetitions };
 }

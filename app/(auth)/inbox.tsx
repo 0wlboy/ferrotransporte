@@ -1,6 +1,7 @@
 import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
 import { PetitionCardBig, PetitionCardSmall, TripRecord, TripPriority } from "@/components/ui/petition-card";
 import SuccessModal from "@/components/modals/success-modal";
+import WarningModal from "@/components/modals/warning-modal";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useCars } from "@/context/car-context";
@@ -49,14 +50,13 @@ export default function Inbox() {
   const [selectedTrip, setSelectedTrip] = useState<TripRecord | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
 
   const handleAccept = async () => {
     if (!selectedTrip) return;
     if (!car) {
-      Alert.alert(
-        "Atención",
-        "No tienes un vehículo asignado. Por favor, asigna uno en tu perfil antes de aceptar solicitudes.",
-      );
+      setShowModal(false);
+      setShowWarningModal(true);
       return;
     }
 
@@ -276,6 +276,18 @@ export default function Inbox() {
         onClose={() => {
           setShowSuccessModal(false);
           router.replace("/(auth)/home" as any);
+        }}
+      />
+
+      <WarningModal
+        visible={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        title="Sin Vehículo Asignado"
+        message="No tienes un vehículo asignado. Por favor, asigna uno en tu perfil antes de aceptar solicitudes."
+        actionText="Asignar ahora"
+        onAction={() => {
+          setShowWarningModal(false);
+          router.push("/(auth)/edit-car" as any);
         }}
       />
     </SafeAreaView>

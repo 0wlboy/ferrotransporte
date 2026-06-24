@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
+import SuccessModal from "@/components/modals/success-modal";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -48,6 +49,7 @@ export default function ResetPassword() {
   const [email, setEmail] = useState("");
   // ── Estado de errores locales (validación regex) ──
   const [emailError, setEmailError] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // ── Contexto de autenticación ──
   const { sendResetEmail, isLoading } = useAuth();
@@ -97,11 +99,7 @@ export default function ResetPassword() {
       // Mostrar el error del servidor bajo el campo de email
       setEmailError(error);
     } else {
-      Alert.alert(
-        "Correo enviado",
-        "Hemos enviado un enlace de recuperación a tu correo electrónico. Por favor, revísalo para restablecer tu contraseña.",
-        [{ text: "Entendido", onPress: () => router.replace("/login") }]
-      );
+      setShowSuccessModal(true);
     }
   };
 
@@ -169,6 +167,15 @@ export default function ResetPassword() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Correo enviado"
+        message="Hemos enviado un enlace de recuperación a tu correo electrónico. Por favor, revísalo para restablecer tu contraseña."
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace("/login");
+        }}
+      />
     </View>
   );
 }

@@ -5,6 +5,7 @@ import {
   type PickedImage,
 } from "@/components/ui/profile-picker";
 import { useAuth } from "@/context/auth-context";
+import { useGetLocations } from "@/hooks/useGetLocations";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -27,26 +28,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_REGEX =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':",.<>\/?\\|]).{6,}$/;
 const NOMBRE_REGEX = /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s-]{2,60}$/;
 const TELEFONO_REGEX = /^\+58\s?[0-9]{10}$/;
 const CI_REGEX = /^V-[0-9]{6,8}$/;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OPCIONES DE GERENCIA
-// ─────────────────────────────────────────────────────────────────────────────
 
-const GERENCIAS = [
-  "Gerencias",
-  "Operaciones",
-  "Mantenimiento",
-  "Recursos Humanos",
-  "Logística",
-  "Administración",
-  "Seguridad",
-  "Tecnología",
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
@@ -65,6 +51,7 @@ const GERENCIAS = [
 export default function EditProfile() {
   const insets = useSafeAreaInsets();
   const { user, updateProfile, isLoading } = useAuth();
+  const { locations } = useGetLocations();
 
   // ── Valores originales (referencia para el diff) ──
   const original = useMemo(
@@ -73,7 +60,7 @@ export default function EditProfile() {
       apellido: user?.apellido ?? "",
       telf: user?.telf ?? "",
       ci_user: user?.ci_user ?? "",
-      gerencia: user?.gerencia ?? "Gerencias",
+      id_gerencia: user?.id_gerencia ?? "",
       email: user?.email ?? "",
     }),
     // Solo calcular una vez al montar; user ya debería estar cargado
@@ -88,9 +75,8 @@ export default function EditProfile() {
   const [apellido, setApellido] = useState(original.apellido);
   const [telefono, setTelefono] = useState(original.telf);
   const [ci, setCi] = useState(original.ci_user);
-  const [gerencia, setGerencia] = useState(original.gerencia);
+  const [id_gerencia, setId_gerencia] = useState(original.id_gerencia);
   const [email, setEmail] = useState(original.email);
-  const [password, setPassword] = useState("");
 
   // ── Errores de validación por campo ──
   const [nombreError, setNombreError] = useState("");
@@ -98,7 +84,6 @@ export default function EditProfile() {
   const [telefonoError, setTelefonoError] = useState("");
   const [ciError, setCiError] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
 
   // ── UI ──
@@ -119,9 +104,8 @@ export default function EditProfile() {
       apellido.trim() !== original.apellido.trim() ||
       telefono.trim() !== original.telf.trim() ||
       ci.trim() !== original.ci_user.trim() ||
-      gerencia !== original.gerencia ||
-      email.trim() !== original.email.trim() ||
-      password.length > 0
+      id_gerencia !== original.id_gerencia ||
+      email.trim() !== original.email.trim()
     );
   }, [
     profileImage,
@@ -129,9 +113,8 @@ export default function EditProfile() {
     apellido,
     telefono,
     ci,
-    gerencia,
+    id_gerencia,
     email,
-    password,
     original,
   ]);
 
@@ -202,19 +185,7 @@ export default function EditProfile() {
       setEmailError("");
     }
 
-    // Contraseña — solo validar si el usuario escribió algo
-    if (password.length > 0) {
-      if (!PASSWORD_REGEX.test(password)) {
-        setPasswordError(
-          "Mín. 6 caracteres con mayúscula, minúscula, número y símbolo.",
-        );
-        isValid = false;
-      } else {
-        setPasswordError("");
-      }
-    } else {
-      setPasswordError("");
-    }
+
 
     return isValid;
   };
@@ -238,9 +209,8 @@ export default function EditProfile() {
     if (telefono.trim() !== original.telf.trim())
       payload.telf = telefono.trim();
     if (ci.trim() !== original.ci_user.trim()) payload.ci_user = ci.trim();
-    if (gerencia !== original.gerencia) payload.gerencia = gerencia;
+    if (id_gerencia !== original.id_gerencia) payload.id_gerencia = id_gerencia;
     if (email.trim() !== original.email.trim()) payload.email = email.trim();
-    if (password.length > 0) payload.password = password;
 
     const result = await updateProfile(payload);
 
@@ -350,6 +320,7 @@ export default function EditProfile() {
                   label="CI"
                   placeholder={original.ci_user || "V-XXXXXXXX"}
                   value={ci}
+                  editable={false}
                   onChangeText={(t) => {
                     setCi(t);
                     if (ciError) setCiError("");
@@ -366,13 +337,15 @@ export default function EditProfile() {
               <TouchableOpacity
                 style={[
                   styles.dropdownButton,
-                  gerencia !== original.gerencia &&
+                  id_gerencia !== original.id_gerencia &&
                     styles.dropdownButtonChanged,
                 ]}
                 onPress={() => setShowDropdown(!showDropdown)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.dropdownSelected}>{gerencia}</Text>
+                <Text style={styles.dropdownSelected}>
+                  {locations?.find((loc) => loc.id === id_gerencia)?.nombre || user?.gerencia || "Seleccionar gerencia"}
+                </Text>
                 <MaterialCommunityIcons
                   name={showDropdown ? "chevron-up" : "chevron-down"}
                   size={20}
@@ -382,27 +355,27 @@ export default function EditProfile() {
 
               {showDropdown && (
                 <View style={styles.dropdownList}>
-                  {GERENCIAS.map((ger) => (
+                  {locations?.map((loc) => (
                     <TouchableOpacity
-                      key={ger}
+                      key={loc.id}
                       style={[
                         styles.dropdownItem,
-                        ger === gerencia && styles.dropdownItemActive,
+                        loc.id === id_gerencia && styles.dropdownItemActive,
                       ]}
                       onPress={() => {
-                        setGerencia(ger);
+                        setId_gerencia(loc.id);
                         setShowDropdown(false);
                       }}
                     >
                       <Text
                         style={[
                           styles.dropdownItemText,
-                          ger === gerencia && styles.dropdownItemTextActive,
+                          loc.id === id_gerencia && styles.dropdownItemTextActive,
                         ]}
                       >
-                        {ger}
+                        {loc.nombre}
                       </Text>
-                      {ger === gerencia && (
+                      {loc.id === id_gerencia && (
                         <MaterialCommunityIcons
                           name="check"
                           size={16}
@@ -430,19 +403,7 @@ export default function EditProfile() {
               autoCapitalize="none"
             />
 
-            {/* ── Nueva contraseña (opcional) ── */}
-            <Input
-              label="Nueva contraseña (opcional)"
-              placeholder="Dejar vacío para no cambiarla"
-              value={password}
-              onChangeText={(t) => {
-                setPassword(t);
-                if (passwordError) setPasswordError("");
-              }}
-              error={passwordError}
-              secureTextEntry
-              autoComplete="new-password"
-            />
+
 
             {/* ── Error general ── */}
             {generalError ? (

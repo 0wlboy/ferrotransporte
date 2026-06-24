@@ -27,39 +27,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DATOS DE RELLENO (se reemplazará con datos reales de la tabla peticiones)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PLACEHOLDER_TRIPS: TripRecord[] = [
-  {
-    id: "1",
-    userNombre: "Carlos Javier",
-    origen: "Calidad",
-    destino: "Gerencia",
-    fecha: "12/01/2026",
-    hora: "1:00 pm",
-    prioridad: "Media",
-  },
-  {
-    id: "2",
-    userNombre: "Carlos Javier",
-    origen: "Calidad",
-    destino: "Gerencia",
-    fecha: "12/01/2026",
-    hora: "1:00 pm",
-    prioridad: "Alta",
-  },
-  {
-    id: "3",
-    userNombre: "María González",
-    origen: "Administración",
-    destino: "Taller",
-    fecha: "10/01/2026",
-    hora: "9:30 am",
-    prioridad: "Media",
-  },
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS

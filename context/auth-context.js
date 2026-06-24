@@ -1,6 +1,7 @@
+import { Colors } from "@/constants/theme";
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { supabase } from "@/utils/supabase";
-import * as Linking from "expo-linking";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, {
   createContext,
@@ -9,9 +10,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Modal, StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Colors } from "@/constants/theme";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS Y DEFINICIONES
@@ -57,7 +56,14 @@ import { Colors } from "@/constants/theme";
  * Contexto de autenticación global de la aplicación.
  * Provee acceso al estado del usuario y funciones de auth desde cualquier componente.
  */
-const AuthContext = createContext(null);
+export const AuthContext = createContext({});
+
+export let isRecoverySession = false;
+
+export function setRecoverySession(val) {
+  isRecoverySession = val;
+  console.log("[AuthContext] isRecoverySession cambiado a:", val);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROVIDER
@@ -130,11 +136,19 @@ export function AuthProvider({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
+        if (isRecoverySession) {
+          console.log("[AuthContext] Ignorando carga de perfil en sesión de recuperación.");
+          return;
+        }
         await loadUserProfile(session.user);
       } else if (event === "SIGNED_OUT") {
         // Liberar memoria del usuario al detectar cierre de sesión
         setUser(null);
+        setRecoverySession(false);
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        if (isRecoverySession) {
+          return;
+        }
         // Mantener el perfil actualizado tras refresh de token
         await loadUserProfile(session.user);
       }
@@ -323,7 +337,7 @@ export function AuthProvider({ children }) {
    * @param {string} email       - Correo electrónico único del nuevo usuario.
    * @param {string} password    - Contraseña del nuevo usuario.
    * @param {string} nombre      - Nombre completo del nuevo usuario.
-   * @returns {Promise<{emailError: string|null, passwordError: string|null, generalError: string|null}>}
+   * @returns {Promise<{emailError: string|null, ciError: string|null, passwordError: string|null, generalError: string|null}>}
    */
   const signUp = useCallback(
     async ({
@@ -341,29 +355,46 @@ export function AuthProvider({ children }) {
       const normalizedEmail = email.trim().toLowerCase();
 
       try {
-        // ── Paso 1: Verificar unicidad del email en la tabla usuarios ──
-        const { data: existingUser, error: checkError } = await supabase
+        // ── Paso 1: Verificar unicidad del email y la cédula en la tabla usuarios (solo registros activos: deleted = false) ──
+        const { data: existingUsers, error: checkError } = await supabase
           .from("usuarios")
-          .select("id")
-          .eq("email", normalizedEmail)
-          .maybeSingle();
+          .select("email, ci_user")
+          .or(`email.eq.${normalizedEmail},ci_user.eq.${ci}`)
+          .eq("deleted", false);
 
         if (checkError) {
           console.error(
-            "[AuthContext] Error al verificar email:",
+            "[AuthContext] Error al verificar email y cédula:",
             checkError.message,
           );
           return {
             emailError: null,
+            ciError: null,
             passwordError: null,
             generalError: "Error al verificar datos. Intenta de nuevo.",
           };
         }
 
-        // Email ya registrado → error específico para mostrar bajo el input
-        if (existingUser) {
+        let emailDuplicate = false;
+        let ciDuplicate = false;
+
+        if (existingUsers && existingUsers.length > 0) {
+          for (const u of existingUsers) {
+            if (u.email?.toLowerCase() === normalizedEmail) {
+              emailDuplicate = true;
+            }
+            if (u.ci_user && String(u.ci_user).trim() === ci.trim()) {
+              ciDuplicate = true;
+            }
+          }
+        }
+
+        if (emailDuplicate || ciDuplicate) {
           return {
-            emailError: "Este correo electrónico ya está registrado.",
+            emailError: emailDuplicate
+              ? "Este correo electrónico ya está registrado."
+              : null,
+            ciError: ciDuplicate ? "Esta cédula ya está registrada." : null,
             passwordError: null,
             generalError: null,
           };
@@ -383,6 +414,7 @@ export function AuthProvider({ children }) {
         if (authError) {
           return {
             emailError: null,
+            ciError: null,
             passwordError: null,
             generalError: mapAuthError(authError.message),
           };
@@ -464,11 +496,17 @@ export function AuthProvider({ children }) {
         }
 
         router.replace("/(auth)/home");
-        return { emailError: null, passwordError: null, generalError: null };
+        return {
+          emailError: null,
+          ciError: null,
+          passwordError: null,
+          generalError: null,
+        };
       } catch (err) {
         console.error("[AuthContext] Error inesperado en signUp:", err);
         return {
           emailError: null,
+          ciError: null,
           passwordError: null,
           generalError: "Ocurrió un error inesperado. Intenta de nuevo.",
         };
@@ -488,12 +526,18 @@ export function AuthProvider({ children }) {
       setError(null);
       setIsLoading(true);
 
-      const redirectUrl = Linking.createURL("/changePassword");
-      console.log("[AuthContext] URL de redirección generada para restablecimiento:", redirectUrl);
+      const redirectUrl = "ferrotransporte://changePassword";
+      console.log(
+        "[AuthContext] URL de redirección generada para restablecimiento:",
+        redirectUrl,
+      );
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: redirectUrl,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        {
+          redirectTo: redirectUrl,
+        },
+      );
 
       if (error) throw error;
 
@@ -525,6 +569,13 @@ export function AuthProvider({ children }) {
       if (error) throw error;
 
       console.log("Contraseña actualizada correctamente.");
+
+      // Cerrar sesión para obligar a loguearse con la nueva contraseña en segundo plano
+      supabase.auth.signOut().catch((err) => {
+        console.error("[AuthContext] Error al cerrar sesión en background:", err.message);
+      });
+      setUser(null);
+
       return { error: null };
     } catch (error) {
       console.error("Error al actualizar la contraseña:", error.message);
@@ -815,7 +866,8 @@ export function AuthProvider({ children }) {
             <Text style={styles.title}>Cuenta Eliminada</Text>
 
             <Text style={styles.message}>
-              Esta cuenta ha sido eliminada de nuestro sistema. Si crees que esto es un error, por favor contacta con soporte.
+              Esta cuenta ha sido eliminada de nuestro sistema. Si crees que
+              esto es un error, por favor contacta con soporte.
             </Text>
 
             <TouchableOpacity
@@ -852,7 +904,7 @@ export function useAuth() {
   if (!context) {
     throw new Error(
       "[useAuth] El hook debe usarse dentro de un <AuthProvider>. " +
-      "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
+        "Asegúrate de envolver tu árbol de componentes con <AuthProvider>.",
     );
   }
   return context;

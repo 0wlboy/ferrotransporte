@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
+import SuccessModal from "@/components/modals/success-modal";
 import { supabase } from "@/utils/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
@@ -76,6 +77,7 @@ export default function ChangePassword() {
   const [password, setPassword] = useState("");
   // ── Estado de errores locales (validación regex) ──
   const [passwordError, setPasswordError] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // ── Contexto de autenticación ──
   const { resetPassword, isLoading, isAuthenticated } = useAuth();
@@ -223,11 +225,7 @@ export default function ChangePassword() {
       // Mostrar el error del servidor bajo el campo de password
       setPasswordError(error);
     } else {
-      Alert.alert(
-        "Contraseña actualizada",
-        "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.",
-        [{ text: "Entendido", onPress: () => router.replace("/login") }]
-      );
+      setShowSuccessModal(true);
     }
   };
 
@@ -294,6 +292,15 @@ export default function ChangePassword() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Contraseña actualizada"
+        message="Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña."
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace("/login");
+        }}
+      />
     </View>
   );
 }
