@@ -195,7 +195,29 @@ export function useGetPetition(
 
   useEffect(() => {
     fetchPetitions();
-  }, [normalizedUserId, role, asignacion, hasUserIdFilter]);
+
+    // Generar un nombre de canal único para evitar colisiones en la suscripción en tiempo real
+    const channelId = `peticiones-changes-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase
+      .channel(channelId)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "peticiones",
+        },
+        (payload) => {
+          console.log("[useGetPetition] Cambios detectados en tiempo real:", payload);
+          fetchPetitions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [normalizedUserId, role, asignacion, hasUserIdFilter, fetchPetitions]);
 
   return { petitions, isLoading, error, refetch: fetchPetitions };
 }
