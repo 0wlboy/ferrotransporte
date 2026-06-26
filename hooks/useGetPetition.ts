@@ -1,5 +1,5 @@
 import { supabase } from "@/utils/supabase";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES & INTERFACES
@@ -60,6 +60,9 @@ export function useGetPetition(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Ref para el debounce del real-time
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchPetitions = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -67,11 +70,10 @@ export function useGetPetition(
     try {
       if (hasUserIdFilter && !normalizedUserId) {
         setPetitions([]);
-        setIsLoading(false);
         return;
       }
 
-      // ── PASO 1: Obtener todas las peticiones ─────────────────────────────────
+      // ── PASO 1: Obtener todas las peticiones en una sola query ───────────────
       let query = supabase
         .from("peticiones")
         .select("*")
@@ -82,13 +84,13 @@ export function useGetPetition(
       }
 
       if (hasUserIdFilter) {
-        query = query.or(`ci_pasajero.eq.${normalizedUserId},ci_driver.eq.${normalizedUserId}`);
+        query = query.or(
+          `ci_pasajero.eq.${normalizedUserId},ci_driver.eq.${normalizedUserId}`,
+        );
       }
 
       const { data: peticionesData, error: peticionesError } =
-        await query.order("created_at", {
-          ascending: false,
-        });
+        await query.order("created_at", { ascending: false });
 
       if (peticionesError) throw new Error(peticionesError.message);
       if (!peticionesData || peticionesData.length === 0) {
@@ -96,72 +98,82 @@ export function useGetPetition(
         return;
       }
 
-      console.log(
-        "[useGetPetition] Peticiones obtenidas:",
-        peticionesData.length,
-      );
+      // ── PASO 2: Recopilar IDs únicos para batch queries ──────────────────────
+      const ciSet = new Set<string>();
+      const locationIdSet = new Set<string>();
 
-      // ── PASOS 2, 3 y 4: Por cada petición buscar usuarios y localizaciones ───
-      const formattedData: PetitionData[] = await Promise.all(
-        peticionesData.map(async (peticion: any) => {
-          // Buscar datos del pasajero por ci_user
-          const { data: pasajeroData } = await supabase
-            .from("usuarios")
-            .select("primer_nombre, apellido, foto_url")
-            .eq("ci_user", peticion.ci_pasajero)
-            .maybeSingle();
+      for (const p of peticionesData) {
+        if (p.ci_pasajero) ciSet.add(String(p.ci_pasajero));
+        if (p.ci_driver) ciSet.add(String(p.ci_driver));
+        if (p.origen_id) locationIdSet.add(String(p.origen_id));
+        if (p.destino_id) locationIdSet.add(String(p.destino_id));
+      }
 
-          const usuarioNombre = pasajeroData
-            ? `${pasajeroData.primer_nombre ?? ""} ${pasajeroData.apellido ?? ""}`.trim()
-            : "Usuario";
-          const usuarioFoto = pasajeroData?.foto_url ?? null;
+      const uniqueCIs = Array.from(ciSet);
+      const uniqueLocationIds = Array.from(locationIdSet);
 
-          // Buscar datos del conductor por ci_user (opcional)
-          let conductorNombre = "";
-          let conductorFoto: string | null = null;
-          if (peticion.ci_driver) {
-            const { data: conductorData } = await supabase
+      // ── PASO 3: Batch queries en paralelo (2 queries en total) ───────────────
+      const [usuariosResult, localizacionesResult] = await Promise.all([
+        uniqueCIs.length > 0
+          ? supabase
               .from("usuarios")
-              .select("primer_nombre, apellido, foto_url")
-              .eq("ci_user", peticion.ci_driver)
-              .maybeSingle();
+              .select("ci_user, primer_nombre, apellido, foto_url")
+              .in("ci_user", uniqueCIs)
+          : Promise.resolve({ data: [], error: null }),
+        uniqueLocationIds.length > 0
+          ? supabase
+              .from("localizaciones")
+              .select("id, nombre")
+              .in("id", uniqueLocationIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-            if (conductorData) {
-              conductorNombre = conductorData
-                ? `${conductorData.primer_nombre ?? ""} ${conductorData.apellido ?? ""}`.trim()
-                : "Por asignar";
-              conductorFoto = conductorData.foto_url ?? null;
-            }
-          }
+      // Construir mapas para búsqueda O(1)
+      const usuariosMap = new Map<
+        string,
+        { nombre: string; foto_url: string | null }
+      >();
+      for (const u of usuariosResult.data ?? []) {
+        const nombre =
+          `${u.primer_nombre ?? ""} ${u.apellido ?? ""}`.trim() || "Usuario";
+        usuariosMap.set(String(u.ci_user), {
+          nombre,
+          foto_url: u.foto_url ?? null,
+        });
+      }
 
-          // Buscar nombre del origen en localizaciones
-          const { data: origenData } = await supabase
-            .from("localizaciones")
-            .select("nombre")
-            .eq("id", peticion.origen_id)
-            .maybeSingle();
+      const localizacionesMap = new Map<string, string>();
+      for (const loc of localizacionesResult.data ?? []) {
+        localizacionesMap.set(String(loc.id), loc.nombre);
+      }
 
-          const origenNombre: string =
-            origenData?.nombre ?? String(peticion.origen_id);
+      // ── PASO 4: Formatear datos con lookups O(1) — sin queries adicionales ───
+      const formattedData: PetitionData[] = peticionesData.map(
+        (peticion: any) => {
+          const pasajeroCI = String(peticion.ci_pasajero ?? "");
+          const conductorCI = peticion.ci_driver
+            ? String(peticion.ci_driver)
+            : null;
 
-          // Buscar nombre del destino en localizaciones
-          const { data: destinoData } = await supabase
-            .from("localizaciones")
-            .select("nombre")
-            .eq("id", peticion.destino_id)
-            .maybeSingle();
+          const usuarioInfo = usuariosMap.get(pasajeroCI) ?? {
+            nombre: "Usuario",
+            foto_url: null,
+          };
+          const conductorInfo = conductorCI
+            ? usuariosMap.get(conductorCI) ?? null
+            : null;
 
-          const destinoNombre: string =
-            destinoData?.nombre ?? String(peticion.destino_id);
-
-          console.log(
-            `[useGetPetition] Petición ${peticion.id}: usuario="${usuarioNombre}" origen="${origenNombre}" destino="${destinoNombre}"`,
-          );
+          const origenNombre =
+            localizacionesMap.get(String(peticion.origen_id ?? "")) ??
+            String(peticion.origen_id);
+          const destinoNombre =
+            localizacionesMap.get(String(peticion.destino_id ?? "")) ??
+            String(peticion.destino_id);
 
           return {
             id: String(peticion.id ?? ""),
-            pasajero_id: String(peticion.ci_pasajero ?? ""),
-            driver_id: peticion.ci_driver ? String(peticion.ci_driver) : null,
+            pasajero_id: pasajeroCI,
+            driver_id: conductorCI,
             origen: origenNombre,
             destino: destinoNombre,
             origen_id: String(peticion.origen_id ?? ""),
@@ -174,12 +186,10 @@ export function useGetPetition(
             descripcion: peticion.descripcion ?? null,
             estado: peticion.estado ?? "Pendiente",
             created_at: peticion.created_at ?? new Date().toISOString(),
-            usuario: { nombre: usuarioNombre, foto_url: usuarioFoto },
-            conductor: conductorNombre
-              ? { nombre: conductorNombre, foto_url: conductorFoto }
-              : null,
+            usuario: usuarioInfo,
+            conductor: conductorInfo,
           };
-        }),
+        },
       );
 
       setPetitions(formattedData);
@@ -207,14 +217,22 @@ export function useGetPetition(
           schema: "public",
           table: "peticiones",
         },
-        (payload) => {
-          console.log("[useGetPetition] Cambios detectados en tiempo real:", payload);
-          fetchPetitions();
-        }
+        () => {
+          // Debounce: evitar múltiples re-fetches si llegan cambios en ráfaga
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+          }
+          debounceTimerRef.current = setTimeout(() => {
+            fetchPetitions();
+          }, 500);
+        },
       )
       .subscribe();
 
     return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
       supabase.removeChannel(channel);
     };
   }, [normalizedUserId, role, asignacion, hasUserIdFilter, fetchPetitions]);

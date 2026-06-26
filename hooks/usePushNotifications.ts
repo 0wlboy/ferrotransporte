@@ -86,10 +86,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId,
-    });
-
+    // El canal de Android debe existir ANTES de obtener el token
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "default",
@@ -98,6 +95,10 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
         lightColor: "#FF231F7C",
       });
     }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
 
     console.log("Expo Push Token obtenido:", tokenData.data);
     return tokenData.data;

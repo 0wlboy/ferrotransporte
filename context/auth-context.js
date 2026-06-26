@@ -149,8 +149,10 @@ export function AuthProvider({ children }) {
         if (isRecoverySession) {
           return;
         }
-        // Mantener el perfil actualizado tras refresh de token
-        await loadUserProfile(session.user);
+        // Solo recargar si no hay datos en memoria (el perfil raramente cambia entre refreshes)
+        if (!user) {
+          await loadUserProfile(session.user);
+        }
       }
     });
 
