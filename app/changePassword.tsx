@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
 import SuccessModal from "@/components/modals/success-modal";
@@ -248,19 +249,7 @@ export default function ChangePassword() {
           {/* ── Sección de encabezado (fondo carmesí) ── */}
           <View style={styles.headerContainer}>
             {/* Botón de Atrás */}
-            <TouchableOpacity
-              onPress={() => router.back()}
-              activeOpacity={0.8}
-              style={styles.backButton}
-              accessibilityLabel="Volver"
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons
-                name="arrow-left"
-                size={22}
-                color="#A10F2D"
-              />
-            </TouchableOpacity>
+            <BackButton />
 
             {/* Título de la pantalla */}
             <Text style={styles.headerTitle}>Reinicio de Contraseña</Text>

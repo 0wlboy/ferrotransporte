@@ -1,4 +1,6 @@
 import SuccessModal from "@/components/modals/success-modal";
+import ErrorModal from "@/components/modals/error-modal";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TextArea } from "@/components/ui/text-area";
@@ -168,6 +170,9 @@ export default function Petition() {
   const { sendPetition, isLoading } = useSendPetition();
   const { user } = useAuth();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { locations, isLoading: isLoadingLocations } = useGetLocations();
 
@@ -215,11 +220,16 @@ export default function Petition() {
     const numPasajeros = pasajeros ? Number(pasajeros) : 0;
     if (isNaN(numPasajeros) || numPasajeros < 0) {
       setPasajerosError("Ingresa un número de pasajeros válido.");
+      setErrorTitle("Datos Inválidos");
+      setErrorMessage("El número de pasajeros ingresado no es válido. Por favor, verifica.");
+      setShowErrorModal(true);
       valid = false;
     }
 
     if (origen === destino) {
-      Alert.alert("Error", "El origen y el destino no pueden ser iguales.");
+      setErrorTitle("Localizaciones Iguales");
+      setErrorMessage("El origen y el destino no pueden ser iguales. Por favor, selecciona rutas distintas.");
+      setShowErrorModal(true);
       valid = false;
     }
 
@@ -238,7 +248,9 @@ export default function Petition() {
     if (success) {
       setShowSuccessModal(true);
     } else {
-      Alert.alert("Error", "No se pudo enviar la petición. Intenta de nuevo.");
+      setErrorTitle("Error de Envío");
+      setErrorMessage("No se pudo enviar la petición de viaje. Por favor, intenta de nuevo o verifica tu conexión.");
+      setShowErrorModal(true);
     }
   };
 
@@ -252,15 +264,7 @@ export default function Petition() {
 
       {/* ── ENCABEZADO ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          style={styles.backButton}
-          accessibilityLabel="Volver"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="arrow-left" size={20} color="#A10F2D" />
-        </TouchableOpacity>
+        <BackButton />
 
         <Text style={styles.headerTitle}>¿A Donde se{"\n"}Dirige?</Text>
       </View>
@@ -407,6 +411,12 @@ export default function Petition() {
           setShowSuccessModal(false);
           router.replace("/(auth)/home");
         }}
+      />
+      <ErrorModal
+        visible={showErrorModal}
+        title={errorTitle}
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
       />
     </View>
   );

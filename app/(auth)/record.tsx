@@ -1,5 +1,6 @@
 import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
 import { PetitionCardSmall, PetitionCardBig, TripRecord, TripPriority } from "@/components/ui/petition-card";
+import { BackButton } from "@/components/ui/back-button";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
@@ -76,20 +77,7 @@ export default function RecordScreen() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        {/* White squared rounded Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          accessibilityLabel="Volver al inicio"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={20}
-            color={Colors.light.tint}
-          />
-        </TouchableOpacity>
+        <BackButton />
 
         {/* Header Title */}
         <Text style={styles.headerTitle}>Historial de{"\n"}Viajes</Text>

@@ -1,3 +1,5 @@
+import SuccessModal from "@/components/modals/success-modal";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,16 +12,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
-import SuccessModal from "@/components/modals/success-modal";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -240,19 +240,7 @@ export default function EditProfile() {
         >
           {/* ── Encabezado carmesí ── */}
           <View style={styles.headerContainer}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              activeOpacity={0.8}
-              style={styles.backButton}
-              accessibilityLabel="Volver"
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons
-                name="arrow-left"
-                size={22}
-                color="#A10F2D"
-              />
-            </TouchableOpacity>
+            <BackButton />
             <Text style={styles.headerTitle}>Editar Perfil</Text>
             <Text style={styles.headerSubtitle}>
               Modifica solo los campos que deseas actualizar
@@ -338,7 +326,7 @@ export default function EditProfile() {
                 style={[
                   styles.dropdownButton,
                   id_gerencia !== original.id_gerencia &&
-                    styles.dropdownButtonChanged,
+                  styles.dropdownButtonChanged,
                 ]}
                 onPress={() => setShowDropdown(!showDropdown)}
                 activeOpacity={0.8}
@@ -448,7 +436,7 @@ export default function EditProfile() {
         message="Los cambios se guardaron correctamente."
         onClose={() => {
           setShowSuccessModal(false);
-          router.back();
+          router.replace("/(auth)/profile");
         }}
       />
     </View>
