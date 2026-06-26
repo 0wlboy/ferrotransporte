@@ -213,7 +213,7 @@ export default function Inbox() {
                 carga: item.carga || "Sin carga",
                 fecha: formattedDate,
                 hora: formattedTime,
-                prioridad: item.prioridad as TripPriority,
+                prioridad: (item.prioridad as TripPriority) || undefined,
                 motivo: item.carga || undefined,
                 estado: item.estado as any,
                 descripcion: item.descripcion || "",

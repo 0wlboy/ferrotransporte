@@ -15,7 +15,7 @@ export interface PetitionData {
   origen_id: string;
   destino_id: string;
   acompañantes: number;
-  prioridad: string;
+  prioridad: string | null;
   carga: string | null;
   estado: string;
   created_at: string;
@@ -179,9 +179,9 @@ export function useGetPetition(
             origen_id: String(peticion.origen_id ?? ""),
             destino_id: String(peticion.destino_id ?? ""),
             acompañantes: Number(
-              peticion.acompañantes ?? peticion.pasajeros ?? 1,
+              peticion.num_acompañantes ?? peticion.acompañantes ?? peticion.pasajeros ?? 0
             ),
-            prioridad: peticion.prioridad ?? "Mediana",
+            prioridad: peticion.prioridad ?? null,
             carga: peticion.carga ?? null,
             descripcion: peticion.descripcion ?? null,
             estado: peticion.estado ?? "Pendiente",

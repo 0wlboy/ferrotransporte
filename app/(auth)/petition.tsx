@@ -40,6 +40,7 @@ interface DropdownProps {
   onToggle: () => void;
   onSelect: (value: string) => void;
   zIndex?: number;
+  required?: boolean;
 }
 
 function Dropdown({
@@ -50,11 +51,12 @@ function Dropdown({
   onToggle,
   onSelect,
   zIndex = 10,
+  required = true,
 }: DropdownProps) {
   return (
     <View style={[styles.dropdownWrapper, { zIndex }]}>
       <Text style={styles.fieldLabel}>
-        {label} <Text style={styles.required}>*</Text>
+        {label} {required && <Text style={styles.required}>*</Text>}
       </Text>
       <TouchableOpacity
         style={[styles.dropdownButton, isOpen && styles.dropdownButtonOpen]}
@@ -171,7 +173,7 @@ export default function Petition() {
 
   const [origen, setOrigen] = useState("");
   const [destino, setDestino] = useState("");
-  const [pasajeros, setPasajeros] = useState("1");
+  const [pasajeros, setPasajeros] = useState("0");
   const [prioridad, setPrioridad] = useState("Mediana");
   const [carga, setCarga] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -210,8 +212,8 @@ export default function Petition() {
   const handleRegister = async () => {
     let valid = true;
 
-    const numPasajeros = Number(pasajeros);
-    if (!pasajeros || isNaN(numPasajeros) || numPasajeros < 1) {
+    const numPasajeros = pasajeros ? Number(pasajeros) : 0;
+    if (isNaN(numPasajeros) || numPasajeros < 0) {
       setPasajerosError("Ingresa un número de pasajeros válido.");
       valid = false;
     }
@@ -336,7 +338,7 @@ export default function Petition() {
                 {/* Pasajeros */}
                 <View style={styles.halfLeft}>
                   <Input
-                    label="Pasajeros *"
+                    label="Pasajeros"
                     placeholder="1"
                     value={pasajeros}
                     onChangeText={(t) => {
@@ -362,6 +364,7 @@ export default function Petition() {
                       setShowPrioridad(false);
                     }}
                     zIndex={10}
+                    required={false}
                   />
                 </View>
               </View>
@@ -566,6 +569,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginBottom: 0,
+    marginTop: 10,
   },
 
   halfLeft: {
