@@ -1,4 +1,6 @@
 import SuccessModal from "@/components/modals/success-modal";
+import ErrorModal from "@/components/modals/error-modal";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TextArea } from "@/components/ui/text-area";
@@ -40,6 +42,7 @@ interface DropdownProps {
   onToggle: () => void;
   onSelect: (value: string) => void;
   zIndex?: number;
+  required?: boolean;
 }
 
 function Dropdown({
@@ -50,11 +53,12 @@ function Dropdown({
   onToggle,
   onSelect,
   zIndex = 10,
+  required = true,
 }: DropdownProps) {
   return (
     <View style={[styles.dropdownWrapper, { zIndex }]}>
       <Text style={styles.fieldLabel}>
-        {label} <Text style={styles.required}>*</Text>
+        {label} {required && <Text style={styles.required}>*</Text>}
       </Text>
       <TouchableOpacity
         style={[styles.dropdownButton, isOpen && styles.dropdownButtonOpen]}
@@ -166,12 +170,15 @@ export default function Petition() {
   const { sendPetition, isLoading } = useSendPetition();
   const { user } = useAuth();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { locations, isLoading: isLoadingLocations } = useGetLocations();
 
   const [origen, setOrigen] = useState("");
   const [destino, setDestino] = useState("");
-  const [pasajeros, setPasajeros] = useState("1");
+  const [pasajeros, setPasajeros] = useState("0");
   const [prioridad, setPrioridad] = useState("Mediana");
   const [carga, setCarga] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -210,14 +217,19 @@ export default function Petition() {
   const handleRegister = async () => {
     let valid = true;
 
-    const numPasajeros = Number(pasajeros);
-    if (!pasajeros || isNaN(numPasajeros) || numPasajeros < 1) {
+    const numPasajeros = pasajeros ? Number(pasajeros) : 0;
+    if (isNaN(numPasajeros) || numPasajeros < 0) {
       setPasajerosError("Ingresa un número de pasajeros válido.");
+      setErrorTitle("Datos Inválidos");
+      setErrorMessage("El número de pasajeros ingresado no es válido. Por favor, verifica.");
+      setShowErrorModal(true);
       valid = false;
     }
 
     if (origen === destino) {
-      Alert.alert("Error", "El origen y el destino no pueden ser iguales.");
+      setErrorTitle("Localizaciones Iguales");
+      setErrorMessage("El origen y el destino no pueden ser iguales. Por favor, selecciona rutas distintas.");
+      setShowErrorModal(true);
       valid = false;
     }
 
@@ -236,7 +248,9 @@ export default function Petition() {
     if (success) {
       setShowSuccessModal(true);
     } else {
-      Alert.alert("Error", "No se pudo enviar la petición. Intenta de nuevo.");
+      setErrorTitle("Error de Envío");
+      setErrorMessage("No se pudo enviar la petición de viaje. Por favor, intenta de nuevo o verifica tu conexión.");
+      setShowErrorModal(true);
     }
   };
 
@@ -250,15 +264,7 @@ export default function Petition() {
 
       {/* ── ENCABEZADO ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          style={styles.backButton}
-          accessibilityLabel="Volver"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="arrow-left" size={20} color="#A10F2D" />
-        </TouchableOpacity>
+        <BackButton />
 
         <Text style={styles.headerTitle}>¿A Donde se{"\n"}Dirige?</Text>
       </View>
@@ -336,7 +342,7 @@ export default function Petition() {
                 {/* Pasajeros */}
                 <View style={styles.halfLeft}>
                   <Input
-                    label="Pasajeros *"
+                    label="Pasajeros"
                     placeholder="1"
                     value={pasajeros}
                     onChangeText={(t) => {
@@ -362,6 +368,7 @@ export default function Petition() {
                       setShowPrioridad(false);
                     }}
                     zIndex={10}
+                    required={false}
                   />
                 </View>
               </View>
@@ -404,6 +411,12 @@ export default function Petition() {
           setShowSuccessModal(false);
           router.replace("/(auth)/home");
         }}
+      />
+      <ErrorModal
+        visible={showErrorModal}
+        title={errorTitle}
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
       />
     </View>
   );
@@ -566,6 +579,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginBottom: 0,
+    marginTop: 10,
   },
 
   halfLeft: {

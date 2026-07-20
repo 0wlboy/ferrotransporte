@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
 import { Input } from "@/components/ui/input";
 import {
     ProfilePicker,
@@ -184,18 +185,7 @@ export default function EditCar() {
       >
         <StatusBar style="light" backgroundColor="#A10F2D" />
         <View style={styles.loadingContainer}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButtonCentered}
-            accessibilityLabel="Volver"
-            accessibilityRole="button"
-          >
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={22}
-              color="#A10F2D"
-            />
-          </TouchableOpacity>
+          <BackButton containerStyle={styles.backButtonCentered} />
           <MaterialCommunityIcons
             name="car-off"
             size={60}
@@ -228,19 +218,7 @@ export default function EditCar() {
         >
           {/* ── Encabezado carmesí ── */}
           <View style={styles.headerContainer}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              activeOpacity={0.8}
-              style={styles.backButton}
-              accessibilityLabel="Volver"
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons
-                name="arrow-left"
-                size={22}
-                color="#A10F2D"
-              />
-            </TouchableOpacity>
+            <BackButton />
             <Text style={styles.headerTitle}>
               Editar Informacion del Vehiculo
             </Text>

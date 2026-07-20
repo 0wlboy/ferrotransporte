@@ -136,7 +136,7 @@ export default function Home() {
           minute: "2-digit",
           hour12: true,
         }),
-        prioridad: activeTripData.prioridad as TripPriority,
+        prioridad: (activeTripData.prioridad as TripPriority) || undefined,
         estado: activeTripData.estado as any,
         descripcion: activeTripData.descripcion || "",
       }
@@ -338,7 +338,7 @@ export default function Home() {
             carga: item.carga || "Sin carga",
             fecha: formattedDate,
             hora: formattedTime,
-            prioridad: item.prioridad as TripPriority,
+            prioridad: (item.prioridad as TripPriority) || undefined,
             motivo: item.carga || undefined,
           };
 

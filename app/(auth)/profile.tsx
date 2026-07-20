@@ -1,4 +1,5 @@
 import ExitModal from "@/components/modals/exit-modal";
+import { BackButton } from "@/components/ui/back-button";
 import { useAuth } from "@/context/auth-context";
 import { useCars } from "@/context/car-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -60,19 +61,7 @@ export default function Profile() {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           {/* Botón de Atrás */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-            style={styles.backButton}
-            accessibilityLabel="Volver"
-            accessibilityRole="button"
-          >
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={22}
-              color="#A10F2D"
-            />
-          </TouchableOpacity>
+          <BackButton />
 
           {/* Botón de Vehículo */}
           {user?.role === "Conductor" && (

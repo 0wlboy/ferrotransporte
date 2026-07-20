@@ -22,13 +22,13 @@ export interface TripRecord {
   destino: string;
   fecha: string;
   hora: string;
-  prioridad: TripPriority;
+  prioridad?: TripPriority;
   motivo?: string;
   estado?: TripStatus;
   descripcion?: string;
 }
 
-export type TripPriority = "Media" | "Alta";
+export type TripPriority = "Media" | "Mediana" | "Alta";
 export type TripStatus =
   | "Completado"
   | "Cancelado"
@@ -106,7 +106,7 @@ export function PetitionCardSmall({
             <View style={styles.tripPetitionInfoContainer}>
               <View style={styles.tripInfoRow}>
                 <Text style={styles.tripInfoLabel}>Acompañantes: </Text>
-                <Text style={styles.tripInfoData}>{data.acompañantes}</Text>
+                <Text style={styles.tripInfoData}>{data.acompañantes ?? 0}</Text>
               </View>
               <View style={styles.tripInfoColumn}>
                 <Text style={styles.tripInfoLabel}>Carga: </Text>
@@ -150,17 +150,19 @@ export function PetitionCardSmall({
               {data.hora}
             </Text>
           </View>
-          <View style={styles.priorityContainer}>
-            <Text style={styles.tripPriorityLabel}>Prioridad: </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: prioritColor, marginLeft: 4 },
-              ]}
-            >
-              <Text style={styles.statusBadgeText}>{data.prioridad}</Text>
+          {data.prioridad ? (
+            <View style={styles.priorityContainer}>
+              <Text style={styles.tripPriorityLabel}>Prioridad: </Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: prioritColor, marginLeft: 4 },
+                ]}
+              >
+                <Text style={styles.statusBadgeText}>{data.prioridad}</Text>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </TouchableOpacity>
     </>
@@ -269,19 +271,21 @@ export function PetitionCardBig({
                 {data.hora}
               </Text>
             </View>
-            <View style={styles.priorityContainer}>
-              <Text style={styles.tripPriorityLabel}>Prioridad: </Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getPriorityColor(data.prioridad) },
-                ]}
-              >
-                <Text style={styles.statusBadgeText}>
-                  {data.prioridad ?? "Mediana"}
-                </Text>
+            {data.prioridad ? (
+              <View style={styles.priorityContainer}>
+                <Text style={styles.tripPriorityLabel}>Prioridad: </Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getPriorityColor(data.prioridad) },
+                  ]}
+                >
+                  <Text style={styles.statusBadgeText}>
+                    {data.prioridad}
+                  </Text>
+                </View>
               </View>
-            </View>
+            ) : null}
           </View>
 
           {/* Separador */}
