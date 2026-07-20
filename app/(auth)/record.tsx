@@ -23,11 +23,17 @@ export default function RecordScreen() {
   const { user } = useAuth();
 
   // 1. Fetch petitions using custom useGetPetition hook
-  const { petitions, isLoading, error, refetch } = useGetPetition({
+  // We don't pass `asignacion` here because the hook only supports a single
+  // status filter. Instead, we filter client-side for both Completado and Cancelado.
+  const { petitions: allPetitions, isLoading, error, refetch } = useGetPetition({
     userId: user?.ci_user || user?.id,
     role: user?.role,
-    asignacion: "Completado",
   });
+
+  // Keep only finished petitions (completed or cancelled)
+  const petitions = allPetitions.filter(
+    (p) => p.estado === "Completado" || p.estado === "Cancelado"
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -208,9 +214,9 @@ export default function RecordScreen() {
                   size={64}
                   color="#B0B0B0"
                 />
-                <Text style={styles.emptyText}>No tienes viajes completados</Text>
+                <Text style={styles.emptyText}>No tienes viajes registrados</Text>
                 <Text style={styles.emptySubText}>
-                  Las peticiones de transporte completadas aparecerán aquí.
+                  Las peticiones completadas o canceladas aparecerán aquí.
                 </Text>
               </View>
             }

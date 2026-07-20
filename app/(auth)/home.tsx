@@ -100,13 +100,13 @@ export default function Home() {
     }, [refetch])
   );
 
-  // Active trip is any petition where state is not Pendiente, Cancelado, or Completado
-  const activeTripData = allPetitions.find(
-    (item) =>
-      item.estado !== "Pendiente" &&
-      item.estado !== "Cancelado" &&
-      item.estado !== "Completado"
-  );
+  // Active trip: for drivers, exclude Pendiente (not yet accepted).
+  // For passengers, include Pendiente so they can see and cancel their pending request.
+  const activeTripData = allPetitions.find((item) => {
+    if (item.estado === "Cancelado" || item.estado === "Completado") return false;
+    if (user?.role === "Conductor" && item.estado === "Pendiente") return false;
+    return true;
+  });
 
   // Convert active petition data to TripRecord format if it exists
   const activeTrip: TripRecord | null = activeTripData
@@ -115,6 +115,8 @@ export default function Home() {
         userNombre:
           user?.role?.toLowerCase() === "conductor"
             ? activeTripData.usuario?.nombre || "Pasajero"
+            : activeTripData.estado === "Pendiente"
+            ? "Por Responder"
             : activeTripData.conductor?.nombre || "Por Asignar",
         userFoto:
           user?.role?.toLowerCase() === "conductor"
@@ -265,10 +267,14 @@ export default function Home() {
           />
         }
       >
-        {/* ── VIAJE ACTIVO ── */}
+        {/* ── VIAJE ACTIVO / PETICIÓN PENDIENTE ── */}
         {activeTrip && (
           <View style={styles.activeTripContainer}>
-            <Text style={styles.sectionTitle}>VIAJE ACTIVO</Text>
+            <Text style={styles.sectionTitle}>
+              {activeTrip.estado === "Pendiente" && user?.role === "Pasajero"
+                ? "PETICIÓN PENDIENTE"
+                : "VIAJE ACTIVO"}
+            </Text>
             <ActiveTripCard
               data={activeTrip}
               viewerRole={user?.role as "Conductor" | "Pasajero"}
