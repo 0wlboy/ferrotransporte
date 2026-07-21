@@ -19,7 +19,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -31,8 +31,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOMBRE_REGEX = /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s-]{2,60}$/;
 const TELEFONO_REGEX = /^\+58\s?[0-9]{10}$/;
 const CI_REGEX = /^V-[0-9]{6,8}$/;
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
@@ -185,8 +183,6 @@ export default function EditProfile() {
       setEmailError("");
     }
 
-
-
     return isValid;
   };
 
@@ -240,7 +236,9 @@ export default function EditProfile() {
         >
           {/* ── Encabezado carmesí ── */}
           <View style={styles.headerContainer}>
-            <BackButton />
+            <BackButton
+              onPress={() => router.replace("/(auth)/profile" as any)}
+            />
             <Text style={styles.headerTitle}>Editar Perfil</Text>
             <Text style={styles.headerSubtitle}>
               Modifica solo los campos que deseas actualizar
@@ -326,13 +324,15 @@ export default function EditProfile() {
                 style={[
                   styles.dropdownButton,
                   id_gerencia !== original.id_gerencia &&
-                  styles.dropdownButtonChanged,
+                    styles.dropdownButtonChanged,
                 ]}
                 onPress={() => setShowDropdown(!showDropdown)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.dropdownSelected}>
-                  {locations?.find((loc) => loc.id === id_gerencia)?.nombre || user?.gerencia || "Seleccionar gerencia"}
+                  {locations?.find((loc) => loc.id === id_gerencia)?.nombre ||
+                    user?.gerencia ||
+                    "Seleccionar gerencia"}
                 </Text>
                 <MaterialCommunityIcons
                   name={showDropdown ? "chevron-up" : "chevron-down"}
@@ -358,7 +358,8 @@ export default function EditProfile() {
                       <Text
                         style={[
                           styles.dropdownItemText,
-                          loc.id === id_gerencia && styles.dropdownItemTextActive,
+                          loc.id === id_gerencia &&
+                            styles.dropdownItemTextActive,
                         ]}
                       >
                         {loc.nombre}
@@ -390,8 +391,6 @@ export default function EditProfile() {
               autoComplete="email"
               autoCapitalize="none"
             />
-
-
 
             {/* ── Error general ── */}
             {generalError ? (

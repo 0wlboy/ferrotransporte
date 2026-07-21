@@ -1,26 +1,24 @@
-import { Button } from "@/components/ui/button";
+import SuccessModal from "@/components/modals/success-modal";
 import { BackButton } from "@/components/ui/back-button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    ProfilePicker,
-    type PickedImage,
+  ProfilePicker,
+  type PickedImage,
 } from "@/components/ui/profile-picker";
 import { useCars } from "@/context/car-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
-import SuccessModal from "@/components/modals/success-modal";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -119,7 +117,12 @@ export default function EditCar() {
 
     // Validar maletero_amplio
     const maleteroVal = maletero_amplio.trim().toLowerCase();
-    if (maleteroVal !== "" && maleteroVal !== "sí" && maleteroVal !== "si" && maleteroVal !== "no") {
+    if (
+      maleteroVal !== "" &&
+      maleteroVal !== "sí" &&
+      maleteroVal !== "si" &&
+      maleteroVal !== "no"
+    ) {
       setMaletero_amplioError("Por favor ingresa 'Sí' o 'No'");
       return;
     }
@@ -142,7 +145,9 @@ export default function EditCar() {
     // maletero_amplio es boolean en la BD → convertir de string a boolean
     if (maletero_amplio.trim() !== original.maletero_amplio.trim()) {
       payload.maletero_amplio =
-        maleteroVal === "" ? null : (maleteroVal === "sí" || maleteroVal === "si");
+        maleteroVal === ""
+          ? null
+          : maleteroVal === "sí" || maleteroVal === "si";
     }
 
     const result = await updateCar(payload);
@@ -160,9 +165,7 @@ export default function EditCar() {
 
   if (isInitializing) {
     return (
-      <View
-        style={[styles.safeContainer, { paddingTop: insets.top }]}
-      >
+      <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
         <StatusBar style="light" backgroundColor="#A10F2D" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -180,12 +183,13 @@ export default function EditCar() {
 
   if (!car) {
     return (
-      <View
-        style={[styles.safeContainer, { paddingTop: insets.top }]}
-      >
+      <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
         <StatusBar style="light" backgroundColor="#A10F2D" />
         <View style={styles.loadingContainer}>
-          <BackButton containerStyle={styles.backButtonCentered} />
+          <BackButton
+            containerStyle={styles.backButtonCentered}
+            onPress={() => router.replace("/(auth)/profile" as any)}
+          />
           <MaterialCommunityIcons
             name="car-off"
             size={60}
@@ -368,15 +372,17 @@ export default function EditCar() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <SuccessModal
-        visible={showSuccessModal}
-        title="¡Vehículo actualizado!"
-        message="Los cambios se guardaron correctamente."
-        onClose={() => {
-          setShowSuccessModal(false);
-          router.back();
-        }}
-      />
+      {showSuccessModal && (
+        <SuccessModal
+          visible={showSuccessModal}
+          title="¡Vehículo actualizado!"
+          message="Los cambios se guardaron correctamente."
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.back();
+          }}
+        />
+      )}
     </View>
   );
 }

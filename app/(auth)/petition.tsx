@@ -403,21 +403,25 @@ export default function Petition() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-      <SuccessModal
-        visible={showSuccessModal}
-        title="¡Petición enviada!"
-        message="Tu petición fue enviada correctamente."
-        onClose={() => {
-          setShowSuccessModal(false);
-          router.replace("/(auth)/home");
-        }}
-      />
-      <ErrorModal
-        visible={showErrorModal}
-        title={errorTitle}
-        message={errorMessage}
-        onClose={() => setShowErrorModal(false)}
-      />
+      {showSuccessModal && (
+        <SuccessModal
+          visible={showSuccessModal}
+          title="¡Petición enviada!"
+          message="Tu petición fue enviada correctamente."
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.replace("/(auth)/home");
+          }}
+        />
+      )}
+      {showErrorModal && (
+        <ErrorModal
+          visible={showErrorModal}
+          title={errorTitle}
+          message={errorMessage}
+          onClose={() => setShowErrorModal(false)}
+        />
+      )}
     </View>
   );
 }

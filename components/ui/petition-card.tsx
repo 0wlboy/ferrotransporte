@@ -106,7 +106,9 @@ export function PetitionCardSmall({
             <View style={styles.tripPetitionInfoContainer}>
               <View style={styles.tripInfoRow}>
                 <Text style={styles.tripInfoLabel}>Acompañantes: </Text>
-                <Text style={styles.tripInfoData}>{data.acompañantes ?? 0}</Text>
+                <Text style={styles.tripInfoData}>
+                  {data.acompañantes ?? 0}
+                </Text>
               </View>
               <View style={styles.tripInfoColumn}>
                 <Text style={styles.tripInfoLabel}>Carga: </Text>
@@ -186,7 +188,8 @@ export function PetitionCardBig({
 }: PetitionCardBigProps) {
   if (!data) return null;
 
-  const labelText = viewerRole === "Conductor" ? "Pasajero:" : "Conductor:";
+  const labelText =
+    viewerRole?.toLowerCase() === "Conductor" ? "Pasajero:" : "Conductor:";
 
   return (
     <Modal
@@ -280,9 +283,7 @@ export function PetitionCardBig({
                     { backgroundColor: getPriorityColor(data.prioridad) },
                   ]}
                 >
-                  <Text style={styles.statusBadgeText}>
-                    {data.prioridad}
-                  </Text>
+                  <Text style={styles.statusBadgeText}>{data.prioridad}</Text>
                 </View>
               </View>
             ) : null}
@@ -356,7 +357,7 @@ export function ActiveTripCard({
 }) {
   if (!data) return null;
 
-  const labelText = viewerRole === "Conductor" ? "Conductor:" : "Pasajero:";
+  const labelText = viewerRole === "Conductor" ? "Pasajero:" : "Conductor:";
 
   // Get name and photo of the other party
   const displayName = data.userNombre || data.conductorNombre || "Por asignar";

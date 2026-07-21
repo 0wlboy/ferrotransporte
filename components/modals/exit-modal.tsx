@@ -104,8 +104,8 @@ export default function ExitModal({
 
               {/* Mensaje descriptivo */}
               <Text style={styles.message}>
-                ¿Estás seguro de que deseas cerrar tu sesión? Tendrás que
-                volver a iniciarla para acceder a la app.
+                ¿Estás seguro de que deseas cerrar tu sesión? Tendrás que volver
+                a iniciarla para acceder a la app.
               </Text>
 
               {/* Botones */}
@@ -124,7 +124,10 @@ export default function ExitModal({
 
                 {/* Salir */}
                 <TouchableOpacity
-                  style={[styles.confirmButton, loading && styles.confirmButtonDisabled]}
+                  style={[
+                    styles.confirmButton,
+                    loading && styles.confirmButtonDisabled,
+                  ]}
                   activeOpacity={0.8}
                   onPress={onConfirm}
                   accessibilityLabel="Confirmar cierre de sesión"
@@ -132,7 +135,7 @@ export default function ExitModal({
                   disabled={loading}
                 >
                   <Text style={styles.confirmButtonText}>
-                    {loading ? "Saliendo…" : "Salir"}
+                    {loading ? "Saliendo…" : "Cerrar"}
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -1,34 +1,32 @@
+import CancelModal from "@/components/modals/cancel-modal";
+import CompleteModal from "@/components/modals/complete-modal";
+import SuccessModal from "@/components/modals/success-modal";
 import {
+  ActiveTripCard,
   PetitionCardBig,
   PetitionCardSmall,
-  TripRecord,
   TripPriority,
-  ActiveTripCard,
+  TripRecord,
 } from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
-import { useGetPetition } from "@/hooks/useGetPetition";
 import { useChangePetitionStatus } from "@/hooks/useChangePetitionStatus";
+import { useGetPetition } from "@/hooks/useGetPetition";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { router } from "expo-router";
-import React, { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import SuccessModal from "@/components/modals/success-modal";
-import CancelModal from "@/components/modals/cancel-modal";
-import CompleteModal from "@/components/modals/complete-modal";
+import { router } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
+  Alert,
   Image,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Alert,
-  RefreshControl,
-  ActivityIndicator,
 } from "react-native";
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -89,7 +87,11 @@ export default function Home() {
   );
 
   // Fetch all user petitions reactively
-  const { petitions: allPetitions = [], isLoading, refetch } = useGetPetition({
+  const {
+    petitions: allPetitions = [],
+    isLoading,
+    refetch,
+  } = useGetPetition({
     userId: user?.ci_user,
     role: user?.role,
   });
@@ -97,13 +99,14 @@ export default function Home() {
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+    }, [refetch]),
   );
 
   // Active trip: for drivers, exclude Pendiente (not yet accepted).
   // For passengers, include Pendiente so they can see and cancel their pending request.
   const activeTripData = allPetitions.find((item) => {
-    if (item.estado === "Cancelado" || item.estado === "Completado") return false;
+    if (item.estado === "Cancelado" || item.estado === "Completado")
+      return false;
     if (user?.role === "Conductor" && item.estado === "Pendiente") return false;
     return true;
   });
@@ -116,8 +119,8 @@ export default function Home() {
           user?.role?.toLowerCase() === "conductor"
             ? activeTripData.usuario?.nombre || "Pasajero"
             : activeTripData.estado === "Pendiente"
-            ? "Por Responder"
-            : activeTripData.conductor?.nombre || "Por Asignar",
+              ? "Por Responder"
+              : activeTripData.conductor?.nombre || "Por Asignar",
         userFoto:
           user?.role?.toLowerCase() === "conductor"
             ? activeTripData.usuario?.foto_url || undefined
@@ -143,12 +146,14 @@ export default function Home() {
     : null;
 
   // Filter completed petitions for the travel history (Historial de viajes)
-  const completedPetitions = allPetitions.filter((p) => p.estado === "Completado");
+  const completedPetitions = allPetitions.filter(
+    (p) => p.estado === "Completado" || p.estado === "Cancelado",
+  );
   const recentTrips = completedPetitions;
 
   // Check if passenger or driver has an active petition (Pending, En Camino, En Sitio, etc.)
   const hasActivePetition = allPetitions.some(
-    (p) => p.estado !== "Completado" && p.estado !== "Cancelado"
+    (p) => p.estado !== "Completado" && p.estado !== "Cancelado",
   );
 
   const handleCancelTrip = async () => {
@@ -205,7 +210,10 @@ export default function Home() {
       await refetch();
     } catch (err) {
       console.error("Error al actualizar estado del viaje:", err);
-      Alert.alert("Error", "No se pudo actualizar el estado del viaje. Intente de nuevo.");
+      Alert.alert(
+        "Error",
+        "No se pudo actualizar el estado del viaje. Intente de nuevo.",
+      );
     }
   };
 
@@ -288,9 +296,9 @@ export default function Home() {
         <TouchableOpacity
           style={[
             styles.actionButton,
-            (hasActivePetition || isLoading) && styles.actionButtonDisabled
+            (hasActivePetition || isLoading) && styles.actionButtonDisabled,
           ]}
-          activeOpacity={(hasActivePetition || isLoading) ? 1 : 0.85}
+          activeOpacity={hasActivePetition || isLoading ? 1 : 0.85}
           disabled={hasActivePetition || isLoading}
           onPress={() => {
             router.push(getActionButton(user?.role ?? null).route as any);
@@ -300,9 +308,18 @@ export default function Home() {
             name={actionIcon as any}
             size={48}
             color="#FFFFFF"
-            style={[styles.actionIcon, (hasActivePetition || isLoading) && styles.actionIconDisabled]}
+            style={[
+              styles.actionIcon,
+              (hasActivePetition || isLoading) && styles.actionIconDisabled,
+            ]}
           />
-          <Text style={[styles.actionButtonText, (hasActivePetition || isLoading) && styles.actionButtonTextDisabled]}>
+          <Text
+            style={[
+              styles.actionButtonText,
+              (hasActivePetition || isLoading) &&
+                styles.actionButtonTextDisabled,
+            ]}
+          >
             {actionLabel}
           </Text>
         </TouchableOpacity>
@@ -365,31 +382,39 @@ export default function Home() {
       </ScrollView>
 
       {/* ── DETALLE DEL VIAJE MODAL ── */}
-      <PetitionCardBig
-        visible={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedTrip(null);
-        }}
-        data={selectedTrip}
-        viewerRole={user?.role as any}
-      />
-      <SuccessModal
-        visible={showSuccessModal}
-        title="¡Viaje Finalizado!"
-        message="El viaje ha sido completado y registrado con éxito."
-        onClose={() => setShowSuccessModal(false)}
-      />
-      <CancelModal
-        visible={showCancelModal}
-        onClose={() => setShowCancelModal(false)}
-        onCancelTrip={handleCancelTrip}
-      />
-      <CompleteModal
-        visible={showCompleteModal}
-        onClose={() => setShowCompleteModal(false)}
-        onCompleteTrip={handleCompleteTrip}
-      />
+      {showModal && (
+        <PetitionCardBig
+          visible={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedTrip(null);
+          }}
+          data={selectedTrip}
+          viewerRole={user?.role as any}
+        />
+      )}
+      {showSuccessModal && (
+        <SuccessModal
+          visible={showSuccessModal}
+          title="¡Viaje Finalizado!"
+          message="El viaje ha sido completado y registrado con éxito."
+          onClose={() => setShowSuccessModal(false)}
+        />
+      )}
+      {showCancelModal && (
+        <CancelModal
+          visible={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onCancelTrip={handleCancelTrip}
+        />
+      )}
+      {showCompleteModal && (
+        <CompleteModal
+          visible={showCompleteModal}
+          onClose={() => setShowCompleteModal(false)}
+          onCompleteTrip={handleCompleteTrip}
+        />
+      )}
     </View>
   );
 }

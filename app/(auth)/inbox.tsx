@@ -1,18 +1,25 @@
-import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
-import { PetitionCardBig, PetitionCardSmall, TripRecord, TripPriority } from "@/components/ui/petition-card";
-import { BackButton } from "@/components/ui/back-button";
+import OrdenModal, {
+  SortDirection,
+  SortField,
+} from "@/components/modals/orden-modal";
 import SuccessModal from "@/components/modals/success-modal";
 import WarningModal from "@/components/modals/warning-modal";
+import { BackButton } from "@/components/ui/back-button";
+import {
+  PetitionCardBig,
+  PetitionCardSmall,
+  TripPriority,
+  TripRecord,
+} from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useCars } from "@/context/car-context";
 import { useChangePetitionStatus } from "@/hooks/useChangePetitionStatus";
 import { useGetPetition } from "@/hooks/useGetPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useMemo, useState, useCallback } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +31,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Inbox() {
   const { user } = useAuth();
@@ -39,12 +47,13 @@ export default function Inbox() {
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+    }, [refetch]),
   );
 
   // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
   const [sortField, setSortField] = useState<SortField>("fecha");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("Descendente");
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>("Descendente");
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
 
   // Modal State for Petition Details
@@ -111,15 +120,17 @@ export default function Inbox() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        <BackButton />
+        <BackButton onPress={() => router.replace("/(auth)/home" as any)} />
 
         {/* Header Title */}
         <Text style={styles.headerTitle}>Buzon de{"\n"}Entrada</Text>
       </View>
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <SafeAreaView style={styles.contentContainer} edges={["bottom", "left", "right"]}>
-
+      <SafeAreaView
+        style={styles.contentContainer}
+        edges={["bottom", "left", "right"]}
+      >
         {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
@@ -211,10 +222,14 @@ export default function Inbox() {
                 <PetitionCardSmall
                   data={tripData}
                   viewerRole="Conductor"
-                  onPress={isLoading ? undefined : () => {
-                    setSelectedTrip(tripData);
-                    setShowModal(true);
-                  }}
+                  onPress={
+                    isLoading
+                      ? undefined
+                      : () => {
+                          setSelectedTrip(tripData);
+                          setShowModal(true);
+                        }
+                  }
                 />
               );
             }}
@@ -225,9 +240,12 @@ export default function Inbox() {
                   size={64}
                   color="#B0B0B0"
                 />
-                <Text style={styles.emptyText}>No tienes viajes registrados</Text>
+                <Text style={styles.emptyText}>
+                  No tienes viajes registrados
+                </Text>
                 <Text style={styles.emptySubText}>
-                  Las peticiones de transporte que realices o tengas asignadas aparecerán aquí.
+                  Las peticiones de transporte que realices o tengas asignadas
+                  aparecerán aquí.
                 </Text>
               </View>
             }
@@ -236,48 +254,56 @@ export default function Inbox() {
       </SafeAreaView>
 
       {/* ── SORTING CONFIGURATION MODAL ── */}
-      <OrdenModal
-        visible={showSortModal}
-        onClose={() => setShowSortModal(false)}
-        currentField={sortField}
-        onSelectField={(field) => setSortField(field)}
-        currentDirection={sortDirection}
-        onSelectDirection={(dir) => setSortDirection(dir)}
-      />
+      {showSortModal && (
+        <OrdenModal
+          visible={showSortModal}
+          onClose={() => setShowSortModal(false)}
+          currentField={sortField}
+          onSelectField={(field) => setSortField(field)}
+          currentDirection={sortDirection}
+          onSelectDirection={(dir) => setSortDirection(dir)}
+        />
+      )}
 
       {/* ── PETITION DETAIL MODAL ── */}
-      <PetitionCardBig
-        visible={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedTrip(null);
-        }}
-        data={selectedTrip}
-        onAccept={handleAccept}
-        viewerRole={user?.role as any}
-      />
+      {showModal && (
+        <PetitionCardBig
+          visible={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedTrip(null);
+          }}
+          data={selectedTrip}
+          onAccept={handleAccept}
+          viewerRole={user?.role as any}
+        />
+      )}
 
-      <SuccessModal
-        visible={showSuccessModal}
-        title="¡Petición Aceptada!"
-        message="Has aceptado la petición de transporte con éxito."
-        onClose={() => {
-          setShowSuccessModal(false);
-          router.replace("/(auth)/home" as any);
-        }}
-      />
+      {showSuccessModal && (
+        <SuccessModal
+          visible={showSuccessModal}
+          title="¡Petición Aceptada!"
+          message="Has aceptado la petición de transporte con éxito."
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.replace("/(auth)/home" as any);
+          }}
+        />
+      )}
 
-      <WarningModal
-        visible={showWarningModal}
-        onClose={() => setShowWarningModal(false)}
-        title="Sin Vehículo Asignado"
-        message="No tienes un vehículo asignado. Por favor, asigna uno en tu perfil antes de aceptar solicitudes."
-        actionText="Asignar ahora"
-        onAction={() => {
-          setShowWarningModal(false);
-          router.push("/(auth)/edit-car" as any);
-        }}
-      />
+      {showWarningModal && (
+        <WarningModal
+          visible={showWarningModal}
+          onClose={() => setShowWarningModal(false)}
+          title="Sin Vehículo Asignado"
+          message="No tienes un vehículo asignado. Por favor, asigna uno en tu perfil antes de aceptar solicitudes."
+          actionText="Asignar ahora"
+          onAction={() => {
+            setShowWarningModal(false);
+            router.push("/(auth)/edit-car" as any);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

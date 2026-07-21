@@ -1,23 +1,20 @@
 // nuevo comentario
 
-import { Button } from "@/components/ui/button";
+import SuccessModal from "@/components/modals/success-modal";
 import { BackButton } from "@/components/ui/back-button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
-import SuccessModal from "@/components/modals/success-modal";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -123,7 +120,7 @@ export default function ResetPassword() {
           {/* ── Sección de encabezado (fondo carmesí) ── */}
           <View style={styles.headerContainer}>
             {/* Botón de Atrás */}
-            <BackButton />
+            <BackButton onPress={() => router.replace("/login" as any)} />
 
             {/* Título de la pantalla */}
             <Text style={styles.headerTitle}>Reinicio de Contraseña</Text>

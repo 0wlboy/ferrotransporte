@@ -1,13 +1,21 @@
-import OrdenModal, { SortDirection, SortField } from "@/components/modals/orden-modal";
-import { PetitionCardSmall, PetitionCardBig, TripRecord, TripPriority } from "@/components/ui/petition-card";
+import OrdenModal, {
+  SortDirection,
+  SortField,
+} from "@/components/modals/orden-modal";
 import { BackButton } from "@/components/ui/back-button";
+import {
+  PetitionCardBig,
+  PetitionCardSmall,
+  TripPriority,
+  TripRecord,
+} from "@/components/ui/petition-card";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useGetPetition } from "@/hooks/useGetPetition";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useMemo, useState, useCallback } from "react";
+import { router } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -26,25 +34,31 @@ export default function RecordScreen() {
   // 1. Fetch petitions using custom useGetPetition hook
   // We don't pass `asignacion` here because the hook only supports a single
   // status filter. Instead, we filter client-side for both Completado and Cancelado.
-  const { petitions: allPetitions, isLoading, error, refetch } = useGetPetition({
+  const {
+    petitions: allPetitions,
+    isLoading,
+    error,
+    refetch,
+  } = useGetPetition({
     userId: user?.ci_user || user?.id,
     role: user?.role,
   });
 
   // Keep only finished petitions (completed or cancelled)
   const petitions = allPetitions.filter(
-    (p) => p.estado === "Completado" || p.estado === "Cancelado"
+    (p) => p.estado === "Completado" || p.estado === "Cancelado",
   );
 
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+    }, [refetch]),
   );
 
   // 2. Sorting State (Defaulting to 'fecha' and 'Descendente' as requested)
   const [sortField, setSortField] = useState<SortField>("fecha");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("Descendente");
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>("Descendente");
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
 
   // Modal State for Petition Details
@@ -83,15 +97,17 @@ export default function RecordScreen() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        <BackButton />
+        <BackButton onPress={() => router.replace("/(auth)/home" as any)} />
 
         {/* Header Title */}
         <Text style={styles.headerTitle}>Historial de{"\n"}Viajes</Text>
       </View>
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <SafeAreaView style={styles.contentContainer} edges={["bottom", "left", "right"]}>
-
+      <SafeAreaView
+        style={styles.contentContainer}
+        edges={["bottom", "left", "right"]}
+      >
         {/* ── ACTIONS BAR (Sorting Activation Button) ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
@@ -188,10 +204,14 @@ export default function RecordScreen() {
                 <PetitionCardSmall
                   data={tripData}
                   viewerRole={user?.role as "Conductor" | "Pasajero"}
-                  onPress={isLoading ? undefined : () => {
-                    setSelectedTrip(tripData);
-                    setShowModal(true);
-                  }}
+                  onPress={
+                    isLoading
+                      ? undefined
+                      : () => {
+                          setSelectedTrip(tripData);
+                          setShowModal(true);
+                        }
+                  }
                 />
               );
             }}
@@ -202,7 +222,9 @@ export default function RecordScreen() {
                   size={64}
                   color="#B0B0B0"
                 />
-                <Text style={styles.emptyText}>No tienes viajes registrados</Text>
+                <Text style={styles.emptyText}>
+                  No tienes viajes registrados
+                </Text>
                 <Text style={styles.emptySubText}>
                   Las peticiones completadas o canceladas aparecerán aquí.
                 </Text>
@@ -213,25 +235,29 @@ export default function RecordScreen() {
       </SafeAreaView>
 
       {/* ── SORTING CONFIGURATION MODAL ── */}
-      <OrdenModal
-        visible={showSortModal}
-        onClose={() => setShowSortModal(false)}
-        currentField={sortField}
-        onSelectField={(field) => setSortField(field)}
-        currentDirection={sortDirection}
-        onSelectDirection={(dir) => setSortDirection(dir)}
-      />
+      {showSortModal && (
+        <OrdenModal
+          visible={showSortModal}
+          onClose={() => setShowSortModal(false)}
+          currentField={sortField}
+          onSelectField={(field) => setSortField(field)}
+          currentDirection={sortDirection}
+          onSelectDirection={(dir) => setSortDirection(dir)}
+        />
+      )}
 
       {/* ── PETITION DETAIL MODAL ── */}
-      <PetitionCardBig
-        visible={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedTrip(null);
-        }}
-        data={selectedTrip}
-        viewerRole={user?.role as any}
-      />
+      {showModal && (
+        <PetitionCardBig
+          visible={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedTrip(null);
+          }}
+          data={selectedTrip}
+          viewerRole={user?.role as any}
+        />
+      )}
     </SafeAreaView>
   );
 }

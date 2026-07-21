@@ -61,7 +61,7 @@ export default function Profile() {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           {/* Botón de Atrás */}
-          <BackButton />
+          <BackButton onPress={() => router.replace("/(auth)/home" as any)} />
 
           {/* Botón de Vehículo */}
           {user?.role === "Conductor" && (
